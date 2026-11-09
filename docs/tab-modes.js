@@ -267,7 +267,8 @@ function journalGrossesse() {
     const rec = dates.filter((d) => diffDays(today(), d) < 3).flatMap((d) => (j[d].sym || []).filter((s) => urgent.has(s)));
     if (rec.length) h += box("err", "⚠️ Ces derniers jours tu as noté : <b>" + esc([...new Set(rec)].join(" ; ")) + "</b>. Parles-en sans attendre à ta sage-femme, à ta maternité ou à ton médecin (15 en cas d'urgence).");
     if (top.length) h += `<p class="muted">Symptômes les plus fréquents sur 30 jours : ${esc(top.map(([k, v]) => `${k} (${v})`).join(" · "))}</p>`;
-    h += fold(`📋 Mon journal (${dates.length} jour${dates.length > 1 ? "s" : ""})`, table(["Date", "Symptômes", "Gêne", "Tension", "Mouvements", "Poids", "Note"], dates.slice(0, 60).map((d) => ({ Date: d, Symptômes: (j[d].sym || []).join(" · "), "Gêne": j[d].gene ?? "", Tension: j[d].tension || "", Mouvements: j[d].mvts || "", Poids: j[d].poids || "", Note: j[d].note || "" }))));
+    const ligne = (d) => `<tr><td>${esc(fr(d))}</td><td>${esc((j[d].sym || []).join(" · "))}</td><td>${esc(j[d].gene ?? "")}</td><td>${esc(j[d].tension || "")}</td><td>${esc(j[d].mvts || "")}</td><td>${esc(j[d].poids || "")}</td><td>${esc(j[d].note || "")}</td><td><button class="b del" data-act="deljournal" data-d="${esc(d)}" title="Supprimer ce jour">🗑️</button></td></tr>`;
+    h += fold(`📋 Mon journal (${dates.length} jour${dates.length > 1 ? "s" : ""})`, `<p class="muted">🗑️ supprime le jour entier (symptômes, tension, poids, note).</p><div class="tw"><table><thead><tr>${["Date", "Symptômes", "Gêne", "Tension", "Mouvements", "Poids", "Note", ""].map((c) => `<th>${c}</th>`).join("")}</tr></thead><tbody>${dates.slice(0, 60).map(ligne).join("")}</tbody></table></div>`);
   }
   return h;
 }
@@ -303,6 +304,12 @@ function afterGrossesse() {
   if ($("jgI")) $("jgI").addEventListener("input", () => ($("jgIo").textContent = val("jgI")));
 }
 Object.assign(ACT_MODES, {
+  async deljournal(el) {
+    const d = el.dataset.d;
+    if (!confirm("Supprimer le journal du " + fr(d) + " ? Cette action est définitive.")) return;
+    const j = { ...(cfg(11).jours || {}) }; delete j[d];
+    if (await saveCfg(11, { jours: j })) { toast("Jour supprimé"); render(); }
+  },
   async savejournal() {
     const d = val("jgDate"), j = { ...(cfg(11).jours || {}) };
     j[d] = { sym: picked("gs"), gene: +val("jgI"), tension: val("jgTension"), mvts: val("jgMvts"), poids: val("jgPoids"), note: val("jgNote") };
