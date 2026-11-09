@@ -80,7 +80,10 @@ body.sideopen #sideBtn{left:min(360px,92vw)}
 body.sideopen #side{transform:none}
 #side h3{margin-top:.2rem}
 @media(max-width:640px){body{font-size:16px}header,main{padding:0 10px}#main{padding:16px 14px;border-radius:18px}h1{font-size:1.6rem}nav{gap:6px}nav button{padding:6px 11px;font-size:.82rem}}
-@media print{body{background:#fff}header,button,#toast,nav{display:none!important}#main{box-shadow:none;border:0}}
+.onlyprint{display:none}
+@media print{body{background:#fff;color:#000}header,button,#toast,nav,#side,#sideBtn,.noprint{display:none!important}#main{box-shadow:none;border:0}
+body.pfiche #main>*:not(#ficheWrap){display:none!important}
+.onlyprint{display:block}details>summary{font-weight:700}details{break-inside:avoid;border:0!important;box-shadow:none!important}}
 
 /* Calendrier de grossesse */
 .tri{margin:1.2rem 0;border:3px solid #f2a39c;border-radius:20px;overflow:hidden;background:var(--card)}

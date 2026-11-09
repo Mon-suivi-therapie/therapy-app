@@ -9,7 +9,7 @@ function settingsHtml() {
   ${sel("sParcours", "🌸 Ton parcours actuel :", PARCOURS, S.set.parcours)}
   ${chk("sDiff", "🌧️ Mode jour difficile (affichage simplifié)", S.set.difficile)}
   ${chk("sNeuro", "🧠 Mode TDAH / TSA (une chose à la fois, plus calme)", S.set.neuro)}
-  ${chk("sMasq", "🙈 Masquer le détail de mon poids", S.set.masquer)}${btn("🔒 Me déconnecter de cet appareil", "logout", "sec")}<hr>`;
+  ${chk("sMasq", "🙈 Masquer le détail de mon poids", S.set.masquer)}<p>${btn("💾 Télécharger une sauvegarde de mes données", "backup", "sec")}${btn("🔒 Me déconnecter de cet appareil", "logout", "sec")}</p><p class="muted">📱 Pour l'avoir comme une appli : sur Android, menu ⋮ puis « Installer l'application » ; sur iPhone (Safari), Partager puis « Sur l'écran d'accueil ».</p><hr>`;
 }
 const CHG_SET = {
   sParcours(el) { S.set.parcours = el.value; saveSet(); render(); },
@@ -389,4 +389,15 @@ Object.assign(ACT_MODES, {
   },
 });
 
-Object.assign(ACT_MODES, { async logout() { if (confirm("Te déconnecter de cet appareil ? Il faudra ressaisir ton mot de passe.")) await sb.auth.signOut(); } });
+Object.assign(ACT_MODES, {
+  async backup() {
+    await loadAll();
+    const out = { sauvegarde_du: new Date().toISOString(), tables: S.d, medicaments: S.meds, configuration: S.cfg };
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob([JSON.stringify(out, null, 1)], { type: "application/json" }));
+    a.download = "sauvegarde-suivi-" + today() + ".json";
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+    toast("💾 Sauvegarde téléchargée");
+  },
+  async logout() { if (confirm("Te déconnecter de cet appareil ? Il faudra ressaisir ton mot de passe.")) await sb.auth.signOut(); } });

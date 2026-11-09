@@ -67,14 +67,14 @@ function renderFiche() {
   const v = { diag: c.diagnostics || "", allerg: c.allergies || "", besoins: c.besoins || "", contact: c.contact || "" };
   const fiche = lignesFiche(v);
   S.ficheTxt = "FICHE POUR MES MÉDECINS - éditée le " + fr(today()) + "\n" + fiche.map(([t, l]) => "\n" + t + "\n" + l.map((x) => "• " + x).join("\n")).join("\n");
-  return `<h2>📄 Fiche pour mes médecins</h2><p class="muted">Un résumé à montrer ou à imprimer avant un rendez-vous. Remplis une fois les 4 champs, le reste se met à jour tout seul.</p>
-  ${fold("✏️ Mes informations (à remplir une fois)", `${area("fDiag", "🩺 Mes diagnostics et antécédents", v.diag, "Écris ici ce que tu veux que tes médecins voient en premier.")}
+  return `<div id="ficheWrap"><div class="onlyprint"><h2>Fiche pour mes médecins</h2><p>Éditée le ${fr(today())}</p></div><h2 class="noprint">📄 Fiche pour mes médecins</h2><p class="muted noprint">Un résumé à montrer ou à imprimer avant un rendez-vous. Remplis une fois les 4 champs, le reste se met à jour tout seul.</p>
+  <div class="noprint">${fold("✏️ Mes informations (à remplir une fois)", `${area("fDiag", "🩺 Mes diagnostics et antécédents", v.diag, "Écris ici ce que tu veux que tes médecins voient en premier.")}
   ${field("fAllerg", "⚠️ Allergies / intolérances", "text", v.allerg)}
   ${area("fBesoins", "🗣️ Mes besoins pour les consultations", v.besoins, "Ex : m'expliquer chaque geste avant l'examen, me laisser des pauses, me donner les consignes par écrit.")}
   ${field("fContact", "👤 Personne de confiance / accompagnant", "text", v.contact)}
-  ${btn("💾 Enregistrer ces informations", "savefiche")}`, !(v.diag || v.allerg || v.besoins || v.contact))}
+  ${btn("💾 Enregistrer ces informations", "savefiche")}`, !(v.diag || v.allerg || v.besoins || v.contact))}</div>
   ${fold("📋 Mon résumé", `<div id="ficheOut">${fiche.map(([t, l]) => fold(esc(t), l.map((x) => "<div>• " + esc(x) + "</div>").join(""), true)).join("")}</div>
-  <p>${btn("🖨️ Imprimer / enregistrer en PDF", "print")}${btn("📋 Copier le texte", "copyfiche", "sec")}${btn("📂 Tout déplier", "fold", "sec", 'data-o="1"')}${btn("📁 Tout replier", "fold", "sec", 'data-o="0"')}</p><p class="muted">Édition du ${fr(today())}.</p>`, true)}`;
+  <p>${btn("🖨️ Imprimer / enregistrer en PDF", "print")}${btn("📋 Copier le texte", "copyfiche", "sec")}${btn("📂 Tout déplier", "fold", "sec", 'data-o="1"')}${btn("📁 Tout replier", "fold", "sec", 'data-o="0"')}</p><p class="muted">Édition du ${fr(today())}.</p>`, true)}</div>`;
 }
 
 const HIST_SECTIONS = [
@@ -107,7 +107,13 @@ const ACT_MISC = {
     const v = { diagnostics: val("fDiag"), allergies: val("fAllerg"), besoins: val("fBesoins"), contact: val("fContact") };
     if (await saveCfg(4, v)) { toast("🎉 Informations enregistrées !"); render(); }
   },
-  print() { document.querySelectorAll('#ficheOut details, main details').forEach((d) => (d.open = true)); window.print(); },
+  print() {
+    document.querySelectorAll("#ficheOut details").forEach((d) => (d.open = true));
+    document.body.classList.add("pfiche");
+    const fin = () => { document.body.classList.remove("pfiche"); removeEventListener("afterprint", fin); };
+    addEventListener("afterprint", fin);
+    window.print();
+  },
   copyfiche() { navigator.clipboard.writeText(S.ficheTxt || "").then(() => toast("Texte copié")); },
   fold(el) { document.querySelectorAll("#ficheOut details").forEach((d) => (d.open = el.dataset.o === "1")); },
   async rowsave(el) {
