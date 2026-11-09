@@ -42,6 +42,7 @@ function renderHealth() {
   const nb = (n, lib, w) => n === 0 ? box("err", `🚨 Plus de ${lib} ! Il faut en racheter tout de suite.`) : n <= mat.seuil ? box("warn", `⚠️ ${w} presque épuisé(e)s : il en reste ${n}. Pense à en racheter.`) : box("ok", `📦 ${w} : ${n} restantes.`);
   let h = `<h2>🥗 Mon Suivi Métabolique</h2><h3>🧰 Mon matériel de glycémie</h3>${nb(+mat.bandelettes, "bandelettes", "Bandelettes")}${nb(+mat.aiguilles, "aiguilles", "Aiguilles")}
   <details><summary>✏️ Modifier mon stock de matériel</summary><div class="row">${field("mBand", "Bandelettes", "number", mat.bandelettes, 'min="0"')}${field("mAig", "Aiguilles", "number", mat.aiguilles, 'min="0"')}${field("mSeuil", "Alerte quand il reste", "number", mat.seuil, 'min="1"')}</div>${btn("💾 Enregistrer mon matériel", "savemat")}</details><hr>
+  ${quotidienBlock()}
   <h3>🩸 Ma glycémie</h3>
   ${chk("gEnc", "🤰 Je suis enceinte (objectifs de grossesse)", S.enceinte || S.set.parcours === PARCOURS[1])}
   ${field("gDate", "🗓️ Date de la mesure", "date", today(), `max="${today()}"`)}

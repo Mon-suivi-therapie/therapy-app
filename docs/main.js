@@ -5,6 +5,7 @@ const NAV = [
   ["rdv", "📅 Rendez-vous Médicaux", renderRdv, null],
   ["health", "🥗 Suivi Glycémie & Nutrition", renderHealth, afterHealth],
   ["df", "🧘 Douleur & Énergie", renderDouleur, afterDouleur],
+  ["sopk", "🌿 Mon Suivi SOPK", renderSopk, afterSopk],
   ["tsa", "🧩 TSA", () => renderTrouble("TSA"), () => afterTrouble("TSA")],
   ["tdah", "⚡ TDAH", () => renderTrouble("TDAH"), () => afterTrouble("TDAH")],
   ["spt", "🌿 SPT", () => renderTrouble("SPT"), () => afterTrouble("SPT")],

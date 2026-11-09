@@ -113,6 +113,7 @@ function renderDash() {
     ${btn("✅ Enregistrer ma journée", "saveday")}`;
   }
   h += `<hr><p class="muted">Pour ajouter, modifier ou supprimer un médicament, ouvre le volet <b>💊 Médicaments</b> sur le côté gauche.</p>`;
+  h += rappelsAgenda();
   return h;
 }
 
