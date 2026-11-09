@@ -36,9 +36,9 @@ def redemarrer():
     st.rerun()
 
 # --- SYSTÈME DE CHARGEMENT SÉCURISÉ ---
-@st.cache_data(ttl=60)
-def load_db_from_supabase(table_name, columns):
-    """Charge TOUTES les lignes (Supabase en renvoie 1000 maximum par requête, on lit donc par pages)."""
+def _fetch_table(table_name, columns):
+    """Charge TOUTES les lignes (Supabase en renvoie 1000 maximum par requête, on lit donc par pages).
+    Renvoie (DataFrame, message_d_avertissement ou None). Sans appel Streamlit : utilisable en parallèle."""
     try:
         lignes = []
         debut = 0
@@ -55,13 +55,45 @@ def load_db_from_supabase(table_name, columns):
         if lignes:
             df = pd.DataFrame(lignes)
             if "Date" in df.columns: df["Date"] = df["Date"].astype(str)
-            return df
-        return pd.DataFrame(columns=columns)
+            return df, None
+        return pd.DataFrame(columns=columns), None
     except Exception as e:
         msg = str(e)
+        warn = None
         if "PGRST205" not in msg and "does not exist" not in msg and "Could not find the table" not in msg:
-            st.warning("⚠️ Impossible de lire « " + table_name + " » : " + msg[:200] + ". Tes données ne sont pas effacées, c'est seulement la lecture qui échoue.")
-        return pd.DataFrame(columns=columns)
+            warn = "⚠️ Impossible de lire « " + table_name + " » : " + msg[:200] + ". Tes données ne sont pas effacées, c'est seulement la lecture qui échoue."
+        return pd.DataFrame(columns=columns), warn
+
+@st.cache_data(ttl=900, show_spinner="Chargement de tes données…")
+def _load_all_tables(specs):
+    """Lit toutes les tables EN PARALLÈLE (au lieu d'une par une) et garde le résultat 15 min.
+    Chaque enregistrement appelle redemarrer() qui vide ce cache, donc les données restent à jour."""
+    from concurrent.futures import ThreadPoolExecutor
+    with ThreadPoolExecutor(max_workers=8) as ex:
+        resultats = list(ex.map(lambda sp: _fetch_table(sp[0], list(sp[1])), specs))
+    return {sp[0]: r for sp, r in zip(specs, resultats)}
+
+_TABLES_SPECS = (
+    ("historique_prises", ("Date", "Médicament", "Prise", "Moment Repas", "Symptômes Traitement", "Symptômes SOPK/Pré-Diabète", "Note")),
+    ("cycle_temperature", ("Date", "Cycle Status", "Température", "Rapport Sexuel", "Note", "Mode Parcours")),
+    ("rdv_medicaux", ("Date", "Heure", "Médecin / Spécialité", "Lieu", "Notes")),
+    ("suivi_glycemie", ("Date", "Glycémie à jeun", "Glycémie Post-Prandiale")),
+    ("suivi_poids", ("Date", "Poids (kg)", "Note", "Taille (cm)")),
+    ("tests_ovulation", ("Date", "Heure", "Résultat", "Ratio", "Interprétation", "Photo", "Note")),
+    ("suivi_pma", ("Date", "Étape Protocole", "Médicament / Injection", "Résultats Échographie", "Notes & Symptômes")),
+    ("examens_pma", ("Date", "Examen", "Statut", "Résultat", "Note")),
+    ("questions_medecin", ("Date", "Question", "Pour", "Posée", "Réponse")),
+    ("rdv_a_prendre", ("Spécialité", "Pour quoi", "Téléphone", "Statut", "Date appel", "Note")),
+    ("suivi_douleur_fatigue", ("Date", "Douleur (0-10)", "Fatigue (0-10)", "Sommeil (h)", "Qualité sommeil (0-10)", "Zones douloureuses", "Symptômes endométriose", "Note")),
+    ("suivi_neuro", ("Date", "Surcharge sensorielle (0-10)", "Anxiété / hypervigilance (0-10)", "Concentration (0-10)", "Agitation / impulsivité (0-10)", "Événements", "Déclencheurs", "Ce qui a aidé", "Note")),
+    ("resultats_bilans", ("Date", "Examen", "Valeur", "Unité", "Note")),
+)
+
+def load_db_from_supabase(table_name, columns):
+    df, warn = _load_all_tables(_TABLES_SPECS).get(table_name) or _fetch_table(table_name, columns)
+    if warn:
+        st.warning(warn)
+    return df.copy()
 
 def save_row_to_supabase(table_name, data_dict):
     try:
@@ -323,6 +355,7 @@ def dose_actuelle_med(info):
             pass
     return dose
 
+@st.cache_data(ttl=900)
 def charger_config(id_cfg):
     try:
         rep_c = supabase.table("config_grossesse").select("*").eq("id", id_cfg).execute()
@@ -336,6 +369,7 @@ def charger_config(id_cfg):
 def sauver_config(id_cfg, cfg):
     try:
         supabase.table("config_grossesse").upsert({"id": id_cfg, "config": cfg}).execute()
+        st.cache_data.clear()
         return True
     except Exception as e:
         st.error("Erreur d'enregistrement : " + str(e))
@@ -459,7 +493,7 @@ neuro_df = load_db_from_supabase("suivi_neuro", ["Date", "Surcharge sensorielle 
 bilans_df = load_db_from_supabase("resultats_bilans", ["Date", "Examen", "Valeur", "Unité", "Note"])
 
 # Chargement sécurisé des médicaments
-@st.cache_data(ttl=60)
+@st.cache_data(ttl=900)
 def load_meds():
     resultat = {}
     try:
@@ -473,7 +507,7 @@ def load_meds():
         resultat = {}
     return resultat
 
-@st.cache_data(ttl=60)
+@st.cache_data(ttl=900)
 def load_config_grossesse():
     try:
         rep = supabase.table("config_grossesse").select("*").eq("id", 1).execute()
@@ -1497,15 +1531,7 @@ if choix_menu == _NOMS_MENU[3]:
     # ---------- STOCK MATÉRIEL GLYCÉMIE ----------
     st.write("### 🧰 Mon matériel de glycémie")
     materiel = {"bandelettes": 0, "aiguilles": 0, "seuil": 10}
-    try:
-        rep_mat = supabase.table("config_grossesse").select("*").eq("id", 3).execute()
-        if rep_mat.data:
-            cfg_mat = rep_mat.data[0]["config"]
-            if isinstance(cfg_mat, str):
-                cfg_mat = json.loads(cfg_mat)
-            materiel.update(cfg_mat)
-    except Exception:
-        pass
+    materiel.update(charger_config(3) or {})
 
     nb_bandelettes = int(materiel.get("bandelettes", 0))
     nb_aiguilles = int(materiel.get("aiguilles", 0))
@@ -1995,16 +2021,7 @@ if choix_menu == _NOMS_MENU[3]:
     c_date = st.date_input("🗓️ Jour à remplir", value=date.today(), max_value=date.today(), key="t4_chk_date")
     jour_txt = str(c_date)
 
-    tous_jours = {}
-    try:
-        rep_c = supabase.table("config_grossesse").select("*").eq("id", 2).execute()
-        if rep_c.data:
-            cfg_c = rep_c.data[0]["config"]
-            if isinstance(cfg_c, str):
-                cfg_c = json.loads(cfg_c)
-            tous_jours = cfg_c.get("jours", {})
-    except Exception:
-        tous_jours = {}
+    tous_jours = (charger_config(2) or {}).get("jours", {})
     coches_sauvees = tous_jours.get(jour_txt, {})
 
     groupes = {
