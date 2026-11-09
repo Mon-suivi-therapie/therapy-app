@@ -1,11 +1,10 @@
 // ===== Navigation, rendu et événements =====
 const NAV = [
   ["dash", "📱 Tableau de Bord", renderDash, null],
-  ["cycle", "🌸 Mon Suivi Féminin", renderCycle, () => { afterCycle(); if (S.set.parcours === PARCOURS[3]) afterPostPartum(); }],
+  ["cycle", "🌸 Mon Suivi Féminin", renderCycle, () => { afterCycle(); if (S.set.parcours === PARCOURS[3]) afterPostPartum(); if (S.set.parcours === PARCOURS[0] || S.set.parcours === PARCOURS[2]) afterSopk(); }],
   ["rdv", "📅 Rendez-vous Médicaux", renderRdv, null],
   ["health", "🥗 Suivi Glycémie & Nutrition", renderHealth, afterHealth],
   ["df", "🧘 Douleur & Énergie", renderDouleur, afterDouleur],
-  ["sopk", "🌿 Mon Suivi SOPK", renderSopk, afterSopk],
   ["tsa", "🧩 TSA", () => renderTrouble("TSA"), () => afterTrouble("TSA")],
   ["tdah", "⚡ TDAH", () => renderTrouble("TDAH"), () => afterTrouble("TDAH")],
   ["spt", "🌿 SPT", () => renderTrouble("SPT"), () => afterTrouble("SPT")],

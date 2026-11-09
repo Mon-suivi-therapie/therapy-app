@@ -1,4 +1,5 @@
 // ===== Rappels dans l'agenda (.ics), suivi SOPK, préparation essai bébé / PMA, quotidien (repas, eau, activité) =====
+// (le suivi SOPK s'affiche dans l'onglet Mon Suivi Féminin, parcours essai bébé et PMA)
 // Configs utilisées : 18 = quotidien, 19 = SOPK, 20 = préparation, 21 = réglages agenda
 
 // ---------- rappels dans l'agenda ----------
@@ -62,7 +63,7 @@ function glycJeun(jusque, jours = 7) {
 }
 function renderSopk() {
   const J = sopk(), dates = Object.keys(J).sort(), ed = S.soEdit && J[S.soEdit] ? J[S.soEdit] : null, t = today(), rg = regles();
-  let h = `<h2>🌿 Mon suivi SOPK</h2><p class="muted">Un petit point par semaine suffit. Le site le relie à tes cycles et à ta glycémie pour que tu voies ce qui évolue.</p><h3>🔁 Mes cycles</h3>`;
+  let h = `<hr><h3>🌿 Mon suivi SOPK</h3><p class="muted">Un petit point par semaine suffit. Le site le relie à tes cycles et à ta glycémie pour que tu voies ce qui évolue.</p><h4>🔁 Mes cycles</h4>`;
   const cyc = []; for (let i = 1; i < rg.length; i++) cyc.push(diffDays(rg[i], rg[i - 1]));
   if (cyc.length) {
     const dern = cyc.slice(-6), longs = dern.filter((x) => x > 35).length, cm = cycleMoyen();
@@ -71,7 +72,7 @@ function renderSopk() {
   } else h += `<p class="muted">Note le début de tes règles dans l'onglet « Mon Suivi Féminin » : au moins deux, pour voir la durée de tes cycles.</p>`;
   if (rg.length) { const d = diffDays(t, rg[rg.length - 1]); if (d > 60) h += box("warn", `🌸 Tes dernières règles datent de ${d} jours. Sans règles depuis plus de 2 à 3 mois, consulte (et fais un test de grossesse si c'est possible).`); }
 
-  h += `<h3>📝 Mon point de la semaine</h3>${ed ? box("info", "✏️ Tu modifies le point du " + fr(S.soEdit) + ". " + btn("Annuler", "socancel", "sec")) : ""}
+  h += `<h4>📝 Mon point de la semaine</h4>${ed ? box("info", "✏️ Tu modifies le point du " + fr(S.soEdit) + ". " + btn("Annuler", "socancel", "sec")) : ""}
   ${field("soDate", "🗓️ Jour", "date", S.soEdit || t, `max="${t}"`)}
   <div class="row"><div>${SO_ECH.map(([k, l, id, o]) => `<label class="f">${l} : <b id="${o}">${ed ? ed[k] ?? 0 : 0}</b>/10</label><input id="${id}" type="range" min="0" max="10" value="${ed ? ed[k] ?? 0 : 0}">`).join("")}</div>
   <div>${field("soT", "Tour de taille (cm, facultatif)", "number", ed ? ed.taille ?? "" : "", 'step="0.5" min="0"')}<p><b>Cette semaine</b></p><div class="chips">${SO_SYM.map((s) => `<label class="ck"><input type="checkbox" name="so" value="${esc(s)}" ${ed && (ed.sym || []).includes(s) ? "checked" : ""}> ${esc(s)}</label>`).join("")}</div></div></div>
@@ -100,7 +101,7 @@ Object.assign(ACT_DF, {
     j[d] = { acne: +val("soA"), poils: +val("soP"), cheveux: +val("soC"), taille: num(val("soT")), sym: picked("so"), note: val("soN") };
     if (await saveCfg(19, { jours: j })) { S.soEdit = null; toast("🎉 Point enregistré !"); render(); }
   },
-  soedit(el) { S.soEdit = el.dataset.d; render(); window.scrollTo(0, 0); },
+  soedit(el) { S.soEdit = el.dataset.d; render(); const f = $("soDate"); if (f) f.scrollIntoView({ block: "center" }); },
   socancel() { S.soEdit = null; render(); },
   async sodel(el) { if (!confirm("Supprimer le point du " + fr(el.dataset.d) + " ?")) return; const j = { ...sopk() }; delete j[el.dataset.d]; if (await saveCfg(19, { jours: j })) { toast("Point supprimé"); render(); } },
 });
@@ -118,23 +119,24 @@ const PB = [
     ["poids", "🥗 Alimentation équilibrée et activité régulière : avec un SOPK, ça aide l'ovulation et la glycémie."],
     ["fenetre", "📅 Repérer ta fenêtre fertile (tests d'ovulation, température) : onglet Mon Suivi Féminin."],
   ]],
-  ["📂 À préparer pour le premier rendez-vous PMA", "", [
+  ["📂 À préparer pour mon 2e rendez-vous PMA (examens faits)", "Le 1er rendez-vous a eu lieu : le 2e sert à lire les résultats des examens et à choisir la suite.", [
+    ["d_resultats", "🧪 Tous les résultats des examens faits (bilans sanguins, échographie, hystérosalpingographie si faite) : ceux du site sont dans « Mes examens PMA » et « Mes résultats de prises de sang »."],
+    ["d_courrier", "📄 Le compte-rendu et les ordonnances du 1er rendez-vous."],
     ["d_cycles", "📊 Mes cycles : dates de règles, tests d'ovulation, températures (la Fiche pour mes médecins du site te les résume)."],
-    ["d_bilans", "🧪 Mes bilans déjà faits : FSH, LH, œstradiol, AMH, TSH, prolactine, glycémie / HbA1c."],
-    ["d_echo", "🩻 Échographie pelvienne ou comptage des follicules, et hystérosalpingographie si déjà faites."],
-    ["d_trait", "💊 La liste de mes traitements actuels et de mes antécédents (médicaux, chirurgicaux, familiaux)."],
-    ["d_admin", "🪪 Carte vitale, pièce d'identité, et les documents demandés par le centre (justificatif de couple selon le cas)."],
+    ["d_trait", "💊 La liste de mes traitements actuels et mes antécédents."],
+    ["d_admin", "🪪 Carte vitale, pièce d'identité et les documents demandés par le centre."],
     ["d_comptes", "📝 Mes questions écrites (bouton ci-dessous)."],
   ]],
   ["🧔 Pour mon partenaire", "À voir avec son médecin.", [
-    ["p_sperme", "🧪 Spermogramme (avec spermocytogramme) récent."],
+    ["p_sperme", "🧪 Résultat du spermogramme (avec spermocytogramme) de ton partenaire, à apporter."],
     ["p_bilan", "🩸 Bilan sanguin et sérologies demandés par le centre."],
     ["p_rdv", "📅 Un rendez-vous ensemble, si possible : les deux sont concernés."],
   ]],
 ];
 const PB_QUESTIONS = [
-  "Quels examens me manquent encore pour faire le point ?",
-  "Quelle première étape proposez-vous pour moi (stimulation simple, insémination, FIV) et pourquoi ?",
+  "Que montrent mes résultats d'examens, un par un ? Y a-t-il quelque chose d'anormal ?",
+  "Faut-il refaire ou ajouter un examen avant de choisir la suite ?",
+  "Quelle étape proposez-vous maintenant pour moi (stimulation simple, insémination, FIV) et pourquoi ?",
   "Mon SOPK / mon pré-diabète change-t-il le traitement ou sa surveillance (risque d'hyperstimulation) ?",
   "Dois-je continuer, adapter ou arrêter certains de mes médicaments (metformine, etc.) ?",
   "Combien de tentatives sont prises en charge, et quel est le calendrier habituel ?",
@@ -142,9 +144,33 @@ const PB_QUESTIONS = [
   "Quels signes doivent me faire vous appeler en urgence pendant le traitement ?",
   "Que puis-je faire de mon côté (alimentation, sport, poids, compléments) pour augmenter mes chances ?",
 ];
+function pmaOuJenSuis() {
+  const t = today(), ex = rows("examens_pma"), faits = ex.filter((r) => ["Fait", "Résultat reçu"].includes(r.Statut)), reste = ex.filter((r) => !["Fait", "Résultat reçu"].includes(r.Statut));
+  const premier = cfg(20).premier || {}, nextRdv = rows("rdv_medicaux").filter((r) => r.Date >= t && r.Statut !== "❌ Annulé" && r.Statut !== "✅ Effectué").sort((a, b) => a.Date.localeCompare(b.Date))[0];
+  let h = `<h4>📌 Où j'en suis dans mon parcours PMA</h4><div class="metrics">${metric("1er rendez-vous", "✅ fait" + (premier.date ? " le " + fr2(premier.date) : ""))}${metric("Examens faits", faits.length + (ex.length ? " / " + ex.length : ""))}${metric("2e rendez-vous", nextRdv ? fr(nextRdv.Date) + " <small>(dans " + diffDays(nextRdv.Date, t) + " j)</small>" : "à noter")}</div>`;
+  if (!nextRdv) h += `<p class="muted">Ajoute la date du 2e rendez-vous dans l'onglet « Rendez-vous Médicaux » : elle apparaîtra ici.</p>`;
+  if (reste.length) h += box("warn", "🧪 Pas encore faits ou sans résultat : <b>" + esc(reste.map((r) => r.Examen).join(" ; ")) + "</b>. Mets le statut à jour dans « Mes examens PMA » quand c'est fait.");
+  else if (ex.length) h += box("ok", "✅ Tous tes examens sont notés comme faits. Pense à apporter les résultats.");
+  else h += `<p class="muted">Aucun examen noté. Ajoute-les dans « Mes examens PMA » pour suivre ce qui est fait.</p>`;
+  h += fold("✏️ Mon 1er rendez-vous : ce qui a été dit ou décidé", `${dateField("pmaR1Date", "🗓️ Date du 1er rendez-vous", premier.date || t, t)}${area("pmaR1Cr", "Compte-rendu (examens prescrits, remarques du médecin, consignes)", premier.cr || "", "Ex : bilan hormonal au 3e jour du cycle, spermogramme pour mon partenaire, hystérosalpingographie à prévoir...")}${btn("💾 Enregistrer", "pmar1")}`, !premier.date && !premier.cr);
+  h += `<p>${btn("📋 Copier un résumé pour mon rendez-vous", "pmaresume", "sec")}</p>`;
+  return h;
+}
+function pmaResumeTexte() {
+  const t = today(), ex = rows("examens_pma").sort((a, b) => a.Date.localeCompare(b.Date)), bil = rows("resultats_bilans"), premier = cfg(20).premier || {};
+  const dern = [...new Set(bil.map((r) => String(r.Examen)))].map((n) => bil.filter((r) => String(r.Examen) === n).sort((a, b) => a.Date.localeCompare(b.Date)).pop()).sort((a, b) => b.Date.localeCompare(a.Date)).slice(0, 12);
+  const q = rows("questions_medecin").filter((r) => r["Posée"] !== "Oui").map((r) => r.Question), rg = regles(), cm = cycleMoyen();
+  return ["RÉSUMÉ POUR MON RENDEZ-VOUS PMA - " + fr(t), "",
+    premier.date ? "1er rendez-vous : " + fr(premier.date) + (premier.cr ? "\n" + premier.cr : "") : "", "",
+    "EXAMENS :", ...(ex.length ? ex.map((r) => `• ${fr(r.Date)} ${r.Examen} : ${r.Statut || ""}${r["Résultat"] ? " - " + r["Résultat"] : ""}`) : ["• (aucun noté)"]), "",
+    "DERNIERS RÉSULTATS DE PRISE DE SANG :", ...(dern.length ? dern.map((r) => `• ${r.Examen} : ${r.Valeur ?? ""} ${r["Unité"] || ""} (${fr(r.Date)})`) : ["• (aucun noté)"]), "",
+    "CYCLES :", rg.length ? `• Dernières règles : ${fr(rg[rg.length - 1])}${cm.n ? ", cycle moyen " + cm.val + " jours" : ""}` : "• (non renseigné)", "",
+    "TRAITEMENTS :", ...(Object.keys(S.meds).length ? Object.entries(S.meds).map(([n, i]) => `• ${n} : ${requis(i).join("/")}, ${doseActuelle(i)} cp`) : ["• (aucun)"]), "",
+    "MES QUESTIONS :", ...(q.length ? q.map((x) => "• " + x) : ["• (aucune en attente)"])].join("\n").replace(/\n{3,}/g, "\n\n");
+}
 function prepaBebe() {
   const D = PB_DONE(), tous = PB.flatMap((s) => s[2]), faits = tous.filter(([k]) => D[k]).length;
-  let h = `<hr><h3>🍼 Ma préparation : essai bébé et PMA</h3>${bar(faits / tous.length)}<p class="muted">${faits} point(s) sur ${tous.length} cochés. Coche au fur et à mesure.</p>`;
+  let h = `<hr><h3>🍼 Ma préparation : essai bébé et PMA</h3>${S.set.parcours === PARCOURS[2] ? pmaOuJenSuis() : ""}${bar(faits / tous.length)}<p class="muted">${faits} point(s) sur ${tous.length} cochés. Coche au fur et à mesure.</p>`;
   h += fold("🩺 Quand consulter pour un projet bébé ?", `<ul><li>En général : après <b>12 mois</b> d'essais sans grossesse, ou <b>6 mois</b> si tu as plus de 35 ans.</li><li><b>Plus tôt</b> si tes cycles sont très irréguliers ou absents (fréquent avec un SOPK), si tu as des douleurs importantes, une endométriose connue, ou un problème connu chez ton partenaire.</li><li>Tu peux aussi consulter <b>avant même d'essayer</b> pour faire le point : c'est utile avec un SOPK.</li></ul><p class="muted">Ce sont des repères généraux : ton médecin ou ton gynécologue te dira ce qui s'applique à toi.</p>`);
   PB.forEach(([titre, sous, L]) => {
     h += fold(`${titre} (${L.filter(([k]) => D[k]).length}/${L.length})`, (sous ? `<p class="muted">${esc(sous)}</p>` : "") + L.map(([k, tx]) => `<label class="ck"><input type="checkbox" data-act="pbtoggle" data-k="${k}" ${D[k] ? "checked" : ""}> <span>${esc(tx)}</span></label>`).join(""));
@@ -153,7 +179,9 @@ function prepaBebe() {
   return h;
 }
 Object.assign(ACT_CYCLE, {
-  async pbtoggle(el) { const k = el.dataset.k, D = { ...PB_DONE() }; if (D[k]) delete D[k]; else D[k] = true; if (await saveCfg(20, { done: D })) render(); },
+  async pbtoggle(el) { const k = el.dataset.k, D = { ...PB_DONE() }; if (D[k]) delete D[k]; else D[k] = true; if (await saveCfg(20, { ...cfg(20), done: D })) render(); },
+  async pmar1() { if (await saveCfg(20, { ...cfg(20), premier: { date: dval("pmaR1Date") || today(), cr: val("pmaR1Cr") } })) { toast("🎉 Enregistré !"); render(); } },
+  pmaresume() { navigator.clipboard.writeText(pmaResumeTexte()).then(() => toast("📋 Résumé copié : colle-le dans un message ou un document")); },
   async pbquestions() {
     const ex = new Set(rows("questions_medecin").map((r) => r.Question)), add = PB_QUESTIONS.filter((q) => !ex.has(q)).map((q) => ({ Date: today(), Question: q, Pour: "Équipe PMA / gynécologue", "Posée": "Non", "Réponse": "" }));
     if (!add.length) { toast("Ces questions sont déjà dans ta liste."); return; }
