@@ -50,33 +50,90 @@ function afterCycleSymp() {
 }
 
 // ---------- grossesse : poids et tension ----------
-function donneesGrossesse() {
-  const poids = {}, tens = {};
-  rows("suivi_poids").forEach((r) => { const k = num(r["Poids (kg)"]); if (k !== null) poids[r.Date] = k; });
-  Object.entries(cfg(11).jours || {}).forEach(([d, x]) => {
-    const k = num(x.poids); if (k !== null && poids[d] === undefined) poids[d] = k;
-    const m = String(x.tension || "").match(/(\d+(?:[.,]\d+)?)\s*[\/\-]\s*(\d+(?:[.,]\d+)?)/);
-    if (m) { let s = bilN(m[1]), di = bilN(m[2]); if (s < 30) { s *= 10; di *= 10; } tens[d] = { s: Math.round(s), d: Math.round(di) }; }
-  });
-  return { poids, tens };
+// Les relevés de tension sont dans la config n°15 : { releves: [{ id, date, heure, moment, pos, bras, s, d, pouls, sym, note }] }
+const TN_MOMENTS = ["Au réveil", "Matin", "Midi", "Après-midi", "Soir", "Avant le coucher", "Après un repas", "Après un effort", "Après un stress / une émotion"];
+const TN_POS = ["Assise", "Allongée sur le côté gauche", "Allongée sur le dos", "Debout"];
+const TN_SYM = ["Maux de tête", "Vertiges / malaise", "Troubles de la vue (mouches, flashs)", "Bourdonnements d'oreilles", "Douleur sous les côtes / estomac", "Gonflement mains ou visage", "Nausées soudaines"];
+const tnNorm = (v) => { const n = num(v); return n === null ? null : n < 30 ? Math.round(n * 10) : Math.round(n); };
+const tnReleves = () => (cfg(15).releves || []).slice();
+const tnHeureNum = (h) => { const m = String(h || "").match(/^(\d{1,2}):(\d{2})/); return m ? (+m[1] + +m[2] / 60) / 24 : 0.5; };
+
+function tnStatut(s, d, sym = []) {
+  const alerte = sym.some((x) => x && x !== "Aucun");
+  if (s >= 160 || d >= 110) return { k: "err", t: `🚨 <b>${s / 10}/${d / 10} : tension très élevée.</b> Appelle ta maternité ou le 15 sans attendre.` };
+  if (s >= 140 || d >= 90) return alerte
+    ? { k: "err", t: `🚨 <b>${s / 10}/${d / 10} avec des symptômes (${esc(sym.join(", "))}).</b> Va aux urgences maternité ou appelle le 15 sans attendre.` }
+    : { k: "err", t: `🛑 <b>${s / 10}/${d / 10} : 14/9 ou plus.</b> Repose-toi 15 min allongée sur le côté gauche, mesure à nouveau, et préviens ta sage-femme ou ta maternité <b>le jour même</b> si ça reste élevé.` };
+  if (s < 90 || d < 60) return { k: "warn", t: `🔽 <b>${s / 10}/${d / 10} : tension basse.</b> Si tu as un malaise, allonge-toi sur le côté gauche et bois. Parles-en à ton médecin si ça se répète.` };
+  return { k: "ok", t: `✅ <b>${s / 10}/${d / 10}</b> : dans les repères habituels.` };
 }
-function courbesGrossesse() {
-  const { poids, tens } = donneesGrossesse(), dp = Object.keys(poids).sort(), dt = Object.keys(tens).sort();
-  let h = "";
-  h += dp.length >= 2 ? `<h4>⚖️ Mon poids</h4><div class="chart"><canvas id="chGPoids"></canvas></div><p class="muted">Poids de l'onglet « Suivi Glycémie & Nutrition » et du journal ci-dessus. ${dp.length} relevés, de ${poids[dp[0]]} à ${poids[dp[dp.length - 1]]} kg. La prise de poids normale dépend de ta corpulence de départ : demande à ta sage-femme quelle courbe suivre.</p>` : `<p class="muted">⚖️ La courbe de poids apparaît dès 2 pesées (journal ci-dessus ou onglet Suivi Glycémie & Nutrition).</p>`;
-  if (dt.length) {
-    const last = tens[dt[dt.length - 1]];
-    h += `<h4>🩺 Ma tension</h4>` + (last.s >= 140 || last.d >= 90 ? box("err", `🛑 Ta dernière tension (${fr2(dt[dt.length - 1])}) est de <b>${last.s / 10}/${last.d / 10}</b> : 14/9 ou plus pendant la grossesse doit être signalé <b>le jour même</b> à ta sage-femme ou à ta maternité, et appelle le 15 en cas de maux de tête forts, troubles de la vue ou douleur sous les côtes.`) : "") + (dt.length >= 2 ? `<div class="chart"><canvas id="chGTens"></canvas></div>` : `<p class="muted">Une seule tension notée pour l'instant : ${last.s / 10}/${last.d / 10}.</p>`) + `<p class="muted">Les valeurs sont en mmHg (12/7 est lu comme 120/70). Zone rouge : 140 ou plus.</p>`;
-  } else h += `<p class="muted">🩺 Note ta tension (ex : 12/7) dans le journal ci-dessus pour voir sa courbe ici.</p>`;
+
+function tnTous() { // tous les relevés (carnet de tension + tension notée dans le journal), triés
+  const L = tnReleves().map((r) => ({ ...r, src: "carnet" }));
+  Object.entries(cfg(11).jours || {}).forEach(([d, x]) => {
+    const m = String(x.tension || "").match(/(\d+(?:[.,]\d+)?)\s*[\/\-]\s*(\d+(?:[.,]\d+)?)/);
+    if (m) L.push({ id: "j" + d, date: d, heure: "", moment: "", s: tnNorm(m[1]), d: tnNorm(m[2]), sym: [], src: "journal" });
+  });
+  return L.filter((r) => r.s && r.d).sort((a, b) => (a.date + (a.heure || "")).localeCompare(b.date + (b.heure || "")));
+}
+
+function tensionBlock() {
+  const R = tnReleves().sort((a, b) => (b.date + (b.heure || "")).localeCompare(a.date + (a.heure || ""))), tous = tnTous(), n = parisNow();
+  const hh = String(n.h).padStart(2, "0") + ":" + String(n.m).padStart(2, "0");
+  let h = `<p class="muted">Note chaque mesure avec l'heure et le contexte : c'est ce qui permet à ta sage-femme de comprendre quand ta tension monte. Mesure assise, au repos depuis 5 minutes, le bras à hauteur du cœur.</p>
+  <div class="row">${dateField("tnDate", "🗓️ Jour", today(), today())}${field("tnHeure", "🕐 Heure de la mesure", "time", hh)}${sel("tnMoment", "📍 Moment", TN_MOMENTS, TN_MOMENTS[1])}</div>
+  <div class="row">${field("tnS", "Tension du haut (ex : 120 ou 12)", "number", "", 'step="1" min="0" inputmode="decimal"')}${field("tnD", "Tension du bas (ex : 70 ou 7)", "number", "", 'step="1" min="0" inputmode="decimal"')}${field("tnP", "Pouls (facultatif)", "number", "", 'min="0" inputmode="numeric"')}</div>
+  <div class="row">${sel("tnPos", "🪑 Position", TN_POS, TN_POS[0])}${sel("tnBras", "💪 Bras", ["Gauche", "Droit"], "Gauche")}</div>
+  ${chk("tnRepos", "✔️ Je me suis reposée 5 minutes avant la mesure", true)}
+  <p><b>Ressens-tu l'un de ces signes ?</b></p>${checks("tsy", TN_SYM)}
+  ${field("tnNote", "Note (facultatif)")}<div id="tnLive"></div>${btn("💾 Enregistrer ma tension", "tnadd")}`;
+
+  if (tous.length) {
+    const last = tous[tous.length - 1], st = tnStatut(last.s, last.d, last.sym || []);
+    h += `<h4>📌 Dernière mesure (${fr(last.date)}${last.heure ? " à " + last.heure : ""})</h4>${box(st.k, st.t)}`;
+    const sem = tous.filter((r) => diffDays(today(), r.date) < 7), hautes = tous.filter((r) => diffDays(today(), r.date) < 30 && (r.s >= 140 || r.d >= 90)).length;
+    h += `<div class="metrics">${sem.length ? metric("Moyenne 7 jours", `${r1(avg(sem.map((r) => r.s)) / 10)}/${r1(avg(sem.map((r) => r.d)) / 10)}`) : ""}${metric("Mesures (30 j)", tous.filter((r) => diffDays(today(), r.date) < 30).length)}${metric("≥ 14/9 (30 j)", hautes)}${metric("Maximum noté", `${Math.max(...tous.map((r) => r.s)) / 10}/${Math.max(...tous.map((r) => r.d)) / 10}`)}</div>`;
+    // quand la tension monte : moyenne par moment de la journée
+    const par = {}; tous.filter((r) => r.moment).forEach((r) => (par[r.moment] = par[r.moment] || []).push(r));
+    const ls = TN_MOMENTS.filter((m) => par[m]).map((m) => ({ Moment: m, Mesures: par[m].length, Moyenne: `${r1(avg(par[m].map((r) => r.s)) / 10)}/${r1(avg(par[m].map((r) => r.d)) / 10)}`, Maximum: `${Math.max(...par[m].map((r) => r.s)) / 10}/${Math.max(...par[m].map((r) => r.d)) / 10}` }));
+    if (ls.length) h += `<h4>⏰ Quand ma tension est-elle la plus haute ?</h4>${table(["Moment", "Mesures", "Moyenne", "Maximum"], ls)}`;
+    if (tous.length >= 2) h += `<div class="chart"><canvas id="chGTens"></canvas></div><p class="muted">Valeurs en mmHg (12/7 = 120/70). Zone rouge : 140 ou plus. Indicatif : ça ne remplace pas l'avis de ton équipe médicale.</p>`;
+  }
+  if (R.length) {
+    const opt = (L, v) => L.map((o) => `<option${o === v ? " selected" : ""}>${esc(o)}</option>`).join("");
+    h += fold(`📋 Mon historique de tension (${R.length}) : modifier ou supprimer`, `<p class="muted">✏️ Change une case puis clique sur 💾 de la ligne, ou 🗑️ pour supprimer.</p>
+    <div class="tw"><table data-tn="1"><thead><tr><th>Date</th><th>Heure</th><th>Moment</th><th>Haut</th><th>Bas</th><th>Pouls</th><th>Position</th><th>Bras</th><th>Signes</th><th>Note</th><th></th></tr></thead><tbody>
+    ${R.map((r) => `<tr data-id="${esc(r.id)}"><td><input type="date" data-tk="date" value="${esc(r.date)}" max="${today()}"></td><td><input type="time" data-tk="heure" value="${esc(r.heure || "")}"></td>
+    <td><select data-tk="moment"><option></option>${opt(TN_MOMENTS, r.moment)}</select></td><td><input data-tk="s" value="${r.s / 10}" inputmode="decimal" style="min-width:60px"></td><td><input data-tk="d" value="${r.d / 10}" inputmode="decimal" style="min-width:60px"></td>
+    <td><input data-tk="pouls" value="${esc(r.pouls ?? "")}" inputmode="numeric" style="min-width:60px"></td><td><select data-tk="pos"><option></option>${opt(TN_POS, r.pos)}</select></td><td><select data-tk="bras"><option></option>${opt(["Gauche", "Droit"], r.bras)}</select></td>
+    <td><input data-tk="sym" value="${esc((r.sym || []).join(", "))}"></td><td><input data-tk="note" value="${esc(r.note || "")}"></td>
+    <td style="white-space:nowrap"><button class="b" data-act="tnsave" title="Enregistrer">💾</button><button class="b del" data-act="tndel" title="Supprimer">🗑️</button></td></tr>`).join("")}
+    </tbody></table></div><p class="muted">Haut et bas en cm de mercure ou en mmHg : « 12 » et « 120 » sont acceptés. Les tensions notées dans le journal de symptômes se modifient dans le journal.</p>`);
+  }
   return h;
 }
+
+function donneesGrossesse() {
+  const poids = {};
+  rows("suivi_poids").forEach((r) => { const k = num(r["Poids (kg)"]); if (k !== null) poids[r.Date] = k; });
+  Object.entries(cfg(11).jours || {}).forEach(([d, x]) => { const k = num(x.poids); if (k !== null && poids[d] === undefined) poids[d] = k; });
+  return { poids };
+}
+function courbesGrossesse() {
+  const { poids } = donneesGrossesse(), dp = Object.keys(poids).sort();
+  return dp.length >= 2 ? `<h4>⚖️ Mon poids</h4><div class="chart"><canvas id="chGPoids"></canvas></div><p class="muted">Poids de l'onglet « Suivi Glycémie & Nutrition » et du journal. ${dp.length} relevés, de ${poids[dp[0]]} à ${poids[dp[dp.length - 1]]} kg. La prise de poids normale dépend de ta corpulence de départ : demande à ta sage-femme quelle courbe suivre.</p>` : `<p class="muted">⚖️ La courbe de poids apparaît dès 2 pesées (journal de symptômes ou onglet Suivi Glycémie & Nutrition).</p>`;
+}
 function afterCourbesGrossesse() {
-  const { poids, tens } = donneesGrossesse();
+  const { poids } = donneesGrossesse();
   if ($("chGPoids")) lineChart("chGPoids", [{ label: "Poids (kg)", data: Object.keys(poids).sort().map((d) => ({ x: dayNum(d), y: poids[d] })), borderColor: "#e8789a", backgroundColor: "#e8789a", tension: 0.2, pointRadius: 3 }], { ytitle: "kg" });
   if ($("chGTens")) {
-    const d = Object.keys(tens).sort(), s = (k, label, c) => ({ label, data: d.map((x) => ({ x: dayNum(x), y: tens[x][k] })), borderColor: c, backgroundColor: c, tension: 0.2, pointRadius: 3 });
-    lineChart("chGTens", [s("s", "Systolique (le haut)", "#d2577d"), s("d", "Diastolique (le bas)", "#6f5bd0")], { ytitle: "mmHg", bands: [{ from: 140, to: 300, color: "rgba(220,60,60,.12)", label: "≥ 140 : à signaler", text: "#a52b3a" }] });
+    const T = tnTous(), s = (k, label, c) => ({ label, data: T.map((r) => ({ x: dayNum(r.date) + tnHeureNum(r.heure), y: r[k] })), borderColor: c, backgroundColor: c, tension: 0.2, pointRadius: 3 });
+    lineChart("chGTens", [s("s", "Haut (systolique)", "#d2577d"), s("d", "Bas (diastolique)", "#6f5bd0")], { ytitle: "mmHg", bands: [{ from: 140, to: 300, color: "rgba(220,60,60,.12)", label: "≥ 140 : à signaler", text: "#a52b3a" }] });
   }
+  // message en direct pendant la saisie
+  const live = () => { const s = tnNorm(val("tnS")), d = tnNorm(val("tnD")); if ($("tnLive")) $("tnLive").innerHTML = s && d ? (() => { const st = tnStatut(s, d, picked("tsy")); return box(st.k, st.t); })() : ""; };
+  ["tnS", "tnD"].forEach((i) => $(i) && $(i).addEventListener("input", live));
+  document.querySelectorAll('input[name="tsy"]').forEach((e) => e.addEventListener("change", live));
 }
 
 Object.assign(ACT_DF, {
@@ -86,5 +143,26 @@ Object.assign(ACT_DF, {
     const jour = dval("dfDate") || val("dfDate") || today(), j = { ...humeurs() };
     j[jour] = { h: v };
     if (await saveCfg(14, { jours: j })) { toast("💭 Humeur enregistrée"); render(); }
+  },
+});
+
+Object.assign(ACT_DF, {
+  async tnadd() {
+    const s = tnNorm(val("tnS")), d = tnNorm(val("tnD"));
+    if (!s || !d) { toast("Écris la tension du haut et du bas."); return; }
+    if (s < 50 || s > 300 || d < 30 || d > 200 || d >= s) { toast("Ces valeurs semblent incorrectes : vérifie le haut et le bas."); return; }
+    const r = { id: Date.now(), date: dval("tnDate") || today(), heure: val("tnHeure"), moment: val("tnMoment"), pos: val("tnPos"), bras: val("tnBras"), s, d, pouls: num(val("tnP")), sym: picked("tsy"), note: val("tnNote"), repos: ck("tnRepos") };
+    if (await saveCfg(15, { releves: [...tnReleves(), r] })) { toast("🩺 Tension enregistrée"); render(); }
+  },
+  async tnsave(el) {
+    const tr = el.closest("tr"), id = tr.dataset.id, g = (k) => tr.querySelector(`[data-tk="${k}"]`).value;
+    const s = tnNorm(g("s")), d = tnNorm(g("d"));
+    if (!s || !d || d >= s) { toast("Haut et bas : valeurs incorrectes."); return; }
+    const L = tnReleves().map((r) => String(r.id) === id ? { ...r, date: g("date") || r.date, heure: g("heure"), moment: g("moment"), pos: g("pos"), bras: g("bras"), s, d, pouls: num(g("pouls")), sym: g("sym").split(",").map((x) => x.trim()).filter(Boolean), note: g("note") } : r);
+    if (await saveCfg(15, { releves: L })) { toast("🎉 Mesure modifiée !"); render(); }
+  },
+  async tndel(el) {
+    const id = el.closest("tr").dataset.id;
+    if (confirm("Supprimer cette mesure de tension ?") && await saveCfg(15, { releves: tnReleves().filter((r) => String(r.id) !== id) })) { toast("Mesure supprimée"); render(); }
   },
 });

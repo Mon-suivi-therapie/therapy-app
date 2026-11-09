@@ -1,7 +1,6 @@
 // ===== Navigation, rendu et événements =====
 const NAV = [
   ["dash", "📱 Tableau de Bord", renderDash, null],
-  ["resume", "📊 Résumé du mois", renderResume, afterResume],
   ["cycle", "🌸 Mon Suivi Féminin", renderCycle, afterCycle],
   ["rdv", "📅 Rendez-vous Médicaux", renderRdv, null],
   ["health", "🥗 Suivi Glycémie & Nutrition", renderHealth, afterHealth],
@@ -9,6 +8,7 @@ const NAV = [
   ["tsa", "🧩 TSA", () => renderTrouble("TSA"), () => afterTrouble("TSA")],
   ["tdah", "⚡ TDAH", () => renderTrouble("TDAH"), () => afterTrouble("TDAH")],
   ["spt", "🌿 SPT", () => renderTrouble("SPT"), () => afterTrouble("SPT")],
+  ["resume", "📊 Résumé du mois", renderResume, afterResume],
   ["fiche", "📄 Fiche pour mes médecins", renderFiche, null],
   ["histo", "📜 Historique & Corrections", renderHisto, null],
 ];

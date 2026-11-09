@@ -63,6 +63,7 @@ function moisStats(ym) {
   const rdv = rows("rdv_medicaux").filter(inM); o.rdv = rdv.length; o.rdvFaits = rdv.filter((r) => r.Statut === "✅ Effectué").length;
   o.bil = rows("resultats_bilans").filter(inM).length;
   const hu = Object.entries(humeurs()).filter(([d]) => d >= debut && d <= finMois).map(([, x]) => x.h);
+  const tn = tnTous().filter((r) => inM({ Date: r.date })); o.ten = tn.length ? { n: tn.length, s: avg(tn.map((r) => r.s)) / 10, d: avg(tn.map((r) => r.d)) / 10, hautes: tn.filter((r) => r.s >= 140 || r.d >= 90).length } : null;
   o.hum = hu.length ? avg(hu) : null; o.nHum = hu.length;
   return o;
 }
@@ -98,6 +99,7 @@ function renderResume() {
   ${cur.som !== null ? metric("😴 Sommeil (h)", fmt(cur.som) + vs(cur.som, prev.som, 1, false)) : ""}
   ${cur.regles.length ? metric("🌸 Début des règles", cur.regles.map(fr2).join(", ")) : ""}
   ${cur.hum !== null ? metric("💭 Humeur moyenne", humEmoji(cur.hum) + " " + fmt(cur.hum) + "/5" + vs(cur.hum, prev.hum, 1, false) + ` <small>(${cur.nHum} jour${cur.nHum > 1 ? "s" : ""})</small>`) : ""}
+  ${cur.ten ? metric("🩺 Tension moyenne", r1(cur.ten.s) + "/" + r1(cur.ten.d) + ` <small>(${cur.ten.n} mesure${cur.ten.n > 1 ? "s" : ""}${cur.ten.hautes ? ", " + cur.ten.hautes + " à 14/9 ou plus ⚠️" : ""})</small>`) : ""}
   ${cur.tests ? metric("🧪 Tests d'ovulation", cur.tests + (cur.testsPos ? ` (${cur.testsPos} positif${cur.testsPos > 1 ? "s" : ""})` : "")) : ""}
   ${cur.rdv ? metric("📅 Rendez-vous", cur.rdv + (cur.rdvFaits ? ` (${cur.rdvFaits} effectué${cur.rdvFaits > 1 ? "s" : ""})` : "")) : ""}
   ${cur.bil ? metric("🧬 Résultats de prises de sang", cur.bil) : ""}

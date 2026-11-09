@@ -71,6 +71,7 @@ function renderGrossesse() {
   <h3>⏱️ Compteurs : contractions et mouvements de bébé</h3>${compteursGrossesse()}
   <h3>🩺 Mon journal de symptômes</h3>${journalGrossesse()}
   <h3>📈 Mon poids et ma tension</h3>${courbesGrossesse()}
+  <h3>🩺 Ma tension</h3>${tensionBlock()}
   <h3>👶 Informations secrètes sur bébé(s)</h3>
   ${sel("gGenre", "👶 Genre du bébé :", GENRES, pc.genre_bebe || GENRES[0])}${field("gNotesB", "📝 Notes sur les échographies", "text", pc.notes_bebe || "")}
   <details><summary>📁 Range-documents : mesures, suivi sage-femme &amp; monitorings</summary>

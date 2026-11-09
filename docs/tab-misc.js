@@ -49,6 +49,13 @@ function lignesFiche(vals) {
     if (ln.length) fiche.push([titre, ln]);
   });
 
+  const tt = tnTous();
+  if (tt.length) {
+    const last = tt[tt.length - 1], r14 = tt.filter((r) => r.date >= addDays(t, -14)), ln = [`Dernière tension : ${last.s / 10}/${last.d / 10} (${fr(last.date)}${last.heure ? " à " + last.heure : ""}${last.moment ? ", " + last.moment.toLowerCase() : ""})`];
+    if (r14.length) ln.push(`Sur 14 jours : ${r14.length} mesure(s), moyenne ${r1(avg(r14.map((r) => r.s)) / 10)}/${r1(avg(r14.map((r) => r.d)) / 10)}, maximum ${Math.max(...r14.map((r) => r.s)) / 10}/${Math.max(...r14.map((r) => r.d)) / 10}${r14.filter((r) => r.s >= 140 || r.d >= 90).length ? `, dont ${r14.filter((r) => r.s >= 140 || r.d >= 90).length} à 14/9 ou plus` : ""}`);
+    fiche.push(["🩺 Tension", ln]);
+  }
+
   const lr = rows("rdv_medicaux").filter((r) => r.Date >= t && r.Statut !== "✅ Effectué").sort((a, c) => a.Date.localeCompare(c.Date)).slice(0, 5).map((r) => `${fr2(r.Date)} : ${r["Médecin / Spécialité"] || ""}`);
   const ap = rows("rdv_a_prendre").filter((r) => r.Statut !== "Fait").map((r) => r["Spécialité"]);
   if (ap.length) lr.push("À prendre : " + ap.slice(0, 6).join(", "));
