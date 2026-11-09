@@ -100,7 +100,9 @@ function renderPoids() {
 
 function renderBilans() {
   const b = rows("resultats_bilans");
-  let h = `<h3>🧪 Mes résultats de prises de sang</h3><p class="muted">HbA1c, hormones, vitamines : note ici tes résultats pour voir l'évolution. (L'import automatique de PDF arrive dans une prochaine version.)</p>
+  let h = `<h3>🧪 Mes résultats de prises de sang</h3><p class="muted">HbA1c, hormones, vitamines : note ici tes résultats pour voir l'évolution.</p>
+  ${pdfImportHtml()}
+  <p><b>Ou saisir à la main :</b></p>
   <div class="row">${field("bDate", "🗓️ Date de la prise de sang", "date", today(), `max="${today()}"`)}${sel("bExam", "Examen", ["HbA1c", "Glycémie à jeun (labo)", "AMH", "FSH", "LH", "Œstradiol", "TSH", "Vitamine D", "Vitamine B12", "Ferritine", "Autre"])}</div>
   ${field("bAutre", "Si « Autre », nom de l'examen")}
   <div class="row">${field("bVal", "Valeur", "number", "0", 'step="0.01"')}${field("bUnite", "Unité (ex : %, g/L, ng/mL)")}</div>

@@ -1,6 +1,7 @@
 // ===== Navigation, rendu et événements =====
 const NAV = [
   ["dash", "📱 Tableau de Bord", renderDash, null],
+  ["resume", "📊 Résumé du mois", renderResume, afterResume],
   ["cycle", "🌸 Mon Suivi Féminin", renderCycle, afterCycle],
   ["rdv", "📅 Rendez-vous Médicaux", renderRdv, null],
   ["health", "🥗 Suivi Glycémie & Nutrition", renderHealth, afterHealth],
@@ -11,8 +12,8 @@ const NAV = [
   ["fiche", "📄 Fiche pour mes médecins", renderFiche, null],
   ["histo", "📜 Historique & Corrections", renderHisto, null],
 ];
-const ACT = { ...ACT_DASH, ...ACT_CYCLE, ...ACT_HEALTH, ...ACT_DF, ...ACT_MISC, ...ACT_MODES };
-const CHG = { ...CHG_DASH, ...CHG_HEALTH, ...CHG_CYCLE, ...CHG_SET, ...CHG_MODES };
+const ACT = { ...ACT_DASH, ...ACT_CYCLE, ...ACT_HEALTH, ...ACT_DF, ...ACT_MISC, ...ACT_MODES, ...ACT_BILAN, ...ACT_RESUME };
+const CHG = { ...CHG_DASH, ...CHG_HEALTH, ...CHG_CYCLE, ...CHG_SET, ...CHG_MODES, ...CHG_BILAN, ...CHG_RESUME };
 
 function render() {
   $("nav").innerHTML = NAV.map(([k, l]) => `<button data-nav="${k}" class="${k === S.tab ? "on" : ""}">${l}</button>`).join("");

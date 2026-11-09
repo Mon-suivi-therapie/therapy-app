@@ -47,6 +47,7 @@ function renderDash() {
   ${dateField("dDate", "🗓️ Jour à enregistrer (tu peux revenir en arrière si tu as oublié)", date, today())}
   ${deja.length ? box("info", `ℹ️ Il y a déjà des prises enregistrées le ${fr(date)} pour : ${esc(deja.join(", "))}. Coche seulement ce qui n'est pas encore enregistré (ou corrige dans l'onglet Historique).`) : ""}
   <h3>✅ À faire pour le ${fr(date)}</h3>`;
+  h = h.replace(`<h3>✅ À faire`, stockAlertes() + `<h3>✅ À faire`);
 
   // rappels d'heure précise (aujourd'hui seulement)
   if (date === today()) {
@@ -130,6 +131,7 @@ function medForm() {
   <p><b>Moments de prise :</b></p><div class="chips">
   ${chk("mMa", "🌅 Matin", i.prend_matin ?? true)}${chk("mMi", "☀️ Midi", i.prend_midi ?? false)}${chk("mSo", "🌙 Soir", i.prend_soir ?? true)}${chk("mCo", "🛌 Coucher (ex : mélatonine)", i.prend_coucher ?? false)}</div>
   ${field("mStart", "📅 Date de début du traitement", "date", i.start_date || today())}
+  ${field("mOrdo", "📝 Fin de l'ordonnance (facultatif, pour être prévenue)", "date", i.ordo_fin || "")}
   ${chk("mEvo", "🔄 Ce traitement est évolutif (paliers)", evo)}
   <div class="row">${field("mD1", "Dose palier 1 (cachets/repas) — ou dose fixe", "number", d1, 'min="1"')}${field("mDur1", "Durée palier 1 (jours)", "number", dur1, 'min="1"')}${field("mD2", "Dose palier 2 (cachets final)", "number", d2, 'min="1"')}</div>
   ${btn("💾 Enregistrer le médicament", "savemed")}
@@ -173,7 +175,7 @@ const ACT_DASH = {
     if (hp && !(ma || mi || so || co)) { const c = momentPourHeure(hp); ma = c === "prend_matin"; mi = c === "prend_midi"; so = c === "prend_soir"; co = c === "prend_coucher"; }
     const evo = ck("mEvo"), d1 = parseInt(val("mD1")) || 1;
     const phases = evo ? [{ dose: d1, duration: parseInt(val("mDur1")) || 7 }, { dose: parseInt(val("mD2")) || 2, duration: 9999 }] : [{ dose: d1, duration: 9999 }];
-    const conf = { stock: parseInt(val("mStock")) || 0, timing: val("mTiming"), heure_precise: hp, start_date: val("mStart") || today(), is_evolution: evo, phases, prend_matin: ma, prend_midi: mi, prend_soir: so, prend_coucher: co, nb_cachet_par_repas: d1 };
+    const conf = { stock: parseInt(val("mStock")) || 0, timing: val("mTiming"), heure_precise: hp, start_date: val("mStart") || today(), ordo_fin: val("mOrdo"), is_evolution: evo, phases, prend_matin: ma, prend_midi: mi, prend_soir: so, prend_coucher: co, nb_cachet_par_repas: d1 };
     if (await saveMed(name, conf)) { S.medEdit = name; toast("🎉 Médicament enregistré !"); render(); }
   },
   async delmed(el) { if (confirm("Supprimer " + el.dataset.n + " ?") && await delMed(el.dataset.n)) { S.medEdit = ""; render(); } },
