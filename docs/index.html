@@ -15,7 +15,6 @@
 <meta name="apple-mobile-web-app-title" content="Mon suivi">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="stylesheet" href="style.css">
-<script>window.__REC = /type=recovery/.test(location.hash);</script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
@@ -33,15 +32,7 @@
     <label class="f" for="lgMail">Email</label><input id="lgMail" type="email" autocomplete="username" inputmode="email">
     <label class="f" for="lgPass">Mot de passe</label><input id="lgPass" type="password" autocomplete="current-password">
     <button class="b" id="lgBtn">Se connecter</button>
-    <p><button class="lnk" id="lgForgot" type="button">Mot de passe oublié ?</button></p>
     </div>
-    <div id="lgNew" hidden>
-    <h3>Choisis un nouveau mot de passe</h3>
-    <label class="f" for="lgNew1">Nouveau mot de passe (8 caractères minimum)</label><input id="lgNew1" type="password" autocomplete="new-password">
-    <label class="f" for="lgNew2">Répète-le</label><input id="lgNew2" type="password" autocomplete="new-password">
-    <button class="b" id="lgNewBtn">Enregistrer mon mot de passe</button>
-    </div>
-    <p id="lgInfo" class="muted" role="status"></p>
     <p id="lgErr" class="muted" role="alert"></p>
   </div>
 </section>
