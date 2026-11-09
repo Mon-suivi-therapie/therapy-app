@@ -62,6 +62,8 @@ function moisStats(ym) {
   o.tests = tests.length; o.testsPos = tests.filter((r) => /posit|pic|haut/i.test(String(r["Résultat"] || ""))).length;
   const rdv = rows("rdv_medicaux").filter(inM); o.rdv = rdv.length; o.rdvFaits = rdv.filter((r) => r.Statut === "✅ Effectué").length;
   o.bil = rows("resultats_bilans").filter(inM).length;
+  const hu = Object.entries(humeurs()).filter(([d]) => d >= debut && d <= finMois).map(([, x]) => x.h);
+  o.hum = hu.length ? avg(hu) : null; o.nHum = hu.length;
   return o;
 }
 
@@ -82,6 +84,7 @@ function renderResume() {
   if (cur.gJ !== null && prev.gJ !== null) { const d = cur.gJ - prev.gJ; if (Math.abs(d) >= 0.03) bul.push([d < 0 ? "ok" : "warn", `🩸 Ta glycémie à jeun moyenne ${d < 0 ? "a baissé" : "a monté"} de ${String(r1(Math.abs(d), 2)).replace(".", ",")} g/L par rapport au mois d'avant.`]); }
   if (cur.dou !== null && prev.dou !== null) { const d = cur.dou - prev.dou; if (Math.abs(d) >= 0.5) bul.push([d < 0 ? "ok" : "warn", `🧘 Ta douleur moyenne ${d < 0 ? "a diminué" : "a augmenté"} (${fmt(prev.dou)} → ${fmt(cur.dou)} sur 10).`]); }
   if (cur.fat !== null && prev.fat !== null) { const d = cur.fat - prev.fat; if (Math.abs(d) >= 0.5) bul.push([d < 0 ? "ok" : "warn", `⚡ Ta fatigue moyenne ${d < 0 ? "a diminué" : "a augmenté"} (${fmt(prev.fat)} → ${fmt(cur.fat)} sur 10).`]); }
+  if (cur.hum !== null && prev.hum !== null) { const d = cur.hum - prev.hum; if (Math.abs(d) >= 0.4) bul.push([d > 0 ? "ok" : "warn", `💭 Ton humeur moyenne est ${d > 0 ? "meilleure" : "plus basse"} que le mois d'avant (${humEmoji(prev.hum)} → ${humEmoji(cur.hum)}).`]); }
   if (cur.pw && prev.pw) { const d = cur.pw.moy - prev.pw.moy; if (Math.abs(d) >= 0.3) bul.push(["info", `⚖️ Ton poids moyen est ${d < 0 ? "en baisse" : "en hausse"} de ${String(r1(Math.abs(d))).replace(".", ",")} kg.`]); }
   h += bul.length ? `<h3>✨ Ce qui ressort</h3>${bul.map(([k, t]) => box(k, t)).join("")}` : (cur.prises || cur.nG || cur.nDf ? "" : box("info", "Pas encore assez de données ce mois-ci. Plus tu enregistres, plus ce résumé devient utile."));
 
@@ -94,6 +97,7 @@ function renderResume() {
   ${cur.fat !== null ? metric("⚡ Fatigue (0-10)", fmt(cur.fat) + vs(cur.fat, prev.fat)) : ""}
   ${cur.som !== null ? metric("😴 Sommeil (h)", fmt(cur.som) + vs(cur.som, prev.som, 1, false)) : ""}
   ${cur.regles.length ? metric("🌸 Début des règles", cur.regles.map(fr2).join(", ")) : ""}
+  ${cur.hum !== null ? metric("💭 Humeur moyenne", humEmoji(cur.hum) + " " + fmt(cur.hum) + "/5" + vs(cur.hum, prev.hum, 1, false) + ` <small>(${cur.nHum} jour${cur.nHum > 1 ? "s" : ""})</small>`) : ""}
   ${cur.tests ? metric("🧪 Tests d'ovulation", cur.tests + (cur.testsPos ? ` (${cur.testsPos} positif${cur.testsPos > 1 ? "s" : ""})` : "")) : ""}
   ${cur.rdv ? metric("📅 Rendez-vous", cur.rdv + (cur.rdvFaits ? ` (${cur.rdvFaits} effectué${cur.rdvFaits > 1 ? "s" : ""})` : "")) : ""}
   ${cur.bil ? metric("🧬 Résultats de prises de sang", cur.bil) : ""}
@@ -110,7 +114,7 @@ function afterResume() {
   const ym = S.mois, deb = dayNum(ym + "-01"), fin = dayNum(addDays(moisPlus(ym, 1) + "-01", -1));
   const inM = (r) => r.Date >= ym + "-01" && r.Date <= ym + "-31";
   const g = rows("suivi_glycemie").filter(inM), df = rows("suivi_douleur_fatigue").filter(inM);
-  const set = (id, ds, o) => { if (!$(id)) return; if (!ds.some((d) => d.data.length)) { $(id).parentElement.innerHTML = `<p class="muted">${id === "chResG" ? "Aucune glycémie enregistrée ce mois-ci." : "Aucune douleur / fatigue enregistrée ce mois-ci."}</p>`; return; } lineChart(id, ds, o); };
+  const set = (id, ds, o) => { if (!$(id)) return; if (!ds.some((d) => d.data.length)) { $(id).parentElement.innerHTML = `<p class="muted">${id === "chResG" ? "Aucune glycémie enregistrée ce mois-ci." : "Aucune douleur, fatigue ou humeur enregistrée ce mois-ci."}</p>`; return; } lineChart(id, ds, o); };
   const base = (label, color, data) => ({ label, data, borderColor: color, backgroundColor: color, tension: 0.25, pointRadius: 3 });
   set("chResG", [
     base("À jeun (g/L)", "#e8789a", pts(g, (r) => dayNum(r.Date), (r) => gv(r["Glycémie à jeun"]))),
@@ -118,7 +122,8 @@ function afterResume() {
   ], { ytitle: "g/L", bands: [{ from: 0, to: 1, color: "rgba(46,160,90,.10)", label: "à jeun < 1,00", text: "#25693f" }] });
   const byDay = {}; df.forEach((r) => { (byDay[r.Date] = byDay[r.Date] || []).push(r); });
   const mo = (c) => Object.entries(byDay).map(([d, a]) => { const v = a.map((r) => num(r[c])).filter((x) => x !== null); return { x: dayNum(d), y: v.length ? avg(v) : null }; }).filter((p) => p.y !== null);
-  set("chResD", [base("Douleur", "#d2577d", mo("Douleur (0-10)")), base("Fatigue", "#6f5bd0", mo("Fatigue (0-10)"))], { ymin: 0, ymax: 10, ytitle: "0 à 10", vlines: regles().filter((d) => dayNum(d) >= deb && dayNum(d) <= fin).map((d) => ({ x: dayNum(d), label: "règles" })) });
+  const hm = Object.entries(humeurs()).filter(([d]) => inM({ Date: d })).map(([d, x]) => ({ x: dayNum(d), y: x.h * 2 }));
+  set("chResD", [base("Douleur", "#d2577d", mo("Douleur (0-10)")), base("Fatigue", "#6f5bd0", mo("Fatigue (0-10)")), base("Humeur (10 = super)", "#2ca02c", hm)], { ymin: 0, ymax: 10, ytitle: "0 à 10", vlines: regles().filter((d) => dayNum(d) >= deb && dayNum(d) <= fin).map((d) => ({ x: dayNum(d), label: "règles" })) });
 }
 
 const ACT_RESUME = {

@@ -222,6 +222,7 @@ function renderDouleur() {
   <p><b>Où as-tu mal ? (fibromyalgie)</b></p>${checks("dz", ["Nuque", "Épaules", "Dos", "Hanches", "Bras", "Mains", "Jambes", "Pieds", "Tête"])}
   <p><b>Symptômes d'endométriose aujourd'hui</b></p>${checks("de", ["Douleurs pelviennes", "Règles douloureuses", "Douleurs pendant les rapports", "Douleurs en allant à la selle", "Douleurs urinaires", "Ballonnements importants", "Douleurs dans le dos / les jambes"])}
   ${field("dfNote", "Note (facultatif)")}<div id="dfWarn"></div>
+  ${humeurBlock()}
   <p class="muted">Douleur dans la poitrine, essoufflement inhabituel ou malaise : appelle le 15.</p>${btn("💾 Enregistrer ce jour", "savedf")}`;
   if (d.length) {
     const byDay = {};
@@ -234,9 +235,10 @@ function renderDouleur() {
     ${fold("📋 Mes 14 derniers enregistrements", table(["Date", "Douleur (0-10)", "Fatigue (0-10)", "Sommeil (h)", "Qualité sommeil (0-10)", "Zones douloureuses", "Symptômes endométriose", "Note"], [...d].sort((a, b) => b.Date.localeCompare(a.Date)).slice(0, 14)))}`;
     S.jm = jm;
   } else h += `<p class="muted">Aucun enregistrement pour le moment.</p>`;
-  return h;
+  return h + cycleSympHtml();
 }
 function afterDouleur() {
+  afterCycleSymp();
   [["dfD", "o1"], ["dfF", "o2"], ["dfQ", "o3"]].forEach(([i, o]) => $(i) && $(i).addEventListener("input", () => { $(o).textContent = val(i); $("dfWarn").innerHTML = +val("dfD") >= 8 ? box("warn", "Douleur très forte : repose-toi, utilise la chaleur, et préviens ton médecin si ça dure ou si c'est nouveau.") : ""; }));
   if ($("chDf") && S.jm) {
     const mk = (lbl, k, c) => ({ label: lbl, data: pts(S.jm, (r) => dayNum(r.dt), (r) => r[k]), borderColor: c, backgroundColor: c, tension: 0 });

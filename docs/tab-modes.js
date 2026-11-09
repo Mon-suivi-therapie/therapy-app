@@ -70,6 +70,7 @@ function renderGrossesse() {
   <h3>🗓️ Mon calendrier de grossesse : mois, SG et SA</h3>${calendrierSA(sa)}
   <h3>⏱️ Compteurs : contractions et mouvements de bébé</h3>${compteursGrossesse()}
   <h3>🩺 Mon journal de symptômes</h3>${journalGrossesse()}
+  <h3>📈 Mon poids et ma tension</h3>${courbesGrossesse()}
   <h3>👶 Informations secrètes sur bébé(s)</h3>
   ${sel("gGenre", "👶 Genre du bébé :", GENRES, pc.genre_bebe || GENRES[0])}${field("gNotesB", "📝 Notes sur les échographies", "text", pc.notes_bebe || "")}
   <details><summary>📁 Range-documents : mesures, suivi sage-femme &amp; monitorings</summary>
@@ -293,7 +294,7 @@ const G_TIPS = [
   [/Fatigue|Gêne/, ""],
 ];
 function afterGrossesse() {
-  renderCtr(); renderMvt();
+  renderCtr(); renderMvt(); afterCourbesGrossesse();
   const tips = () => { const c = picked("gs").filter((l) => !document.querySelector(`input[name="gs"][data-u][value="${CSS.escape(l)}"]`)); const t = c.map((l) => (G_TIPS.find(([re]) => re.test(l)) || [])[1]).filter(Boolean); if ($("jgTips")) $("jgTips").innerHTML = t.length ? "<p><b>💡 Conseils selon ce que tu ressens</b></p>" + t.map((x) => `<div class="tip">${x}</div>`).join("") : ""; };
   document.querySelectorAll('input[name="gs"]').forEach((e) => e.addEventListener("change", tips));
   const upd = () => { const u = [...document.querySelectorAll('input[name="gs"][data-u]:checked')].map((e) => e.value); if ($("jgAlert")) $("jgAlert").innerHTML = u.length ? box("err", "🛑 <b>À ne pas ignorer :</b> " + esc(u.join(" ; ")) + ".<br>Appelle ta maternité ou ta sage-femme <b>sans attendre</b> ; en cas de saignements abondants, perte de liquide, douleur intense ou malaise : <b>15</b> ou urgences maternité.") : ""; };
