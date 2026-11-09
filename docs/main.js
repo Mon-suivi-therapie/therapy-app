@@ -1,7 +1,7 @@
 // ===== Navigation, rendu et événements =====
 const NAV = [
   ["dash", "📱 Tableau de Bord", renderDash, null],
-  ["cycle", "🌸 Mon Suivi Féminin", renderCycle, afterCycle],
+  ["cycle", "🌸 Mon Suivi Féminin", renderCycle, () => { afterCycle(); if (S.set.parcours === PARCOURS[3]) afterPostPartum(); }],
   ["rdv", "📅 Rendez-vous Médicaux", renderRdv, null],
   ["health", "🥗 Suivi Glycémie & Nutrition", renderHealth, afterHealth],
   ["df", "🧘 Douleur & Énergie", renderDouleur, afterDouleur],
@@ -71,6 +71,7 @@ async function boot() {
   const h = location.hash.slice(1); if (NAV.some((n) => n[0] === h)) S.tab = h;
   const { data: { session } } = await sb.auth.getSession();
   if (!session) { showLogin(); return; }
+  if (window.__REC) { showNewPwd(); return; }
   hideLogin();
   try { await loadAll(); } catch (e) { S.warn.push(String(e.message || e)); }
   render();
@@ -82,7 +83,27 @@ async function doLogin() {
   if (error) { $("lgErr").textContent = /Invalid login/i.test(error.message) ? "Email ou mot de passe incorrect." : "Connexion impossible : " + error.message; return; }
   $("lgPass").value = ""; boot();
 }
+function showNewPwd() { showLogin(); $("lgMain").hidden = true; $("lgNew").hidden = false; $("lgInfo").textContent = ""; }
+$("lgForgot").addEventListener("click", async () => {
+  $("lgErr").textContent = ""; $("lgInfo").textContent = "";
+  const mail = $("lgMail").value.trim();
+  if (!mail) { $("lgErr").textContent = "Écris d'abord ton email ci-dessus, puis clique sur « Mot de passe oublié »."; return; }
+  const { error } = await sb.auth.resetPasswordForEmail(mail, { redirectTo: location.origin + location.pathname });
+  if (error) { $("lgErr").textContent = /rate|seconds|many/i.test(error.message) ? "Trop de demandes : attends une minute puis réessaie." : "Envoi impossible : " + error.message; return; }
+  $("lgInfo").textContent = "✉️ Si cet email correspond à ton compte, un lien vient d'être envoyé. Ouvre-le sur cet appareil (regarde aussi dans les spams).";
+});
+$("lgNewBtn").addEventListener("click", async () => {
+  $("lgErr").textContent = "";
+  const a = $("lgNew1").value, b = $("lgNew2").value;
+  if (a.length < 8) { $("lgErr").textContent = "8 caractères minimum."; return; }
+  if (a !== b) { $("lgErr").textContent = "Les deux mots de passe ne sont pas identiques."; return; }
+  const { error } = await sb.auth.updateUser({ password: a });
+  if (error) { $("lgErr").textContent = "Impossible de changer le mot de passe : " + error.message; return; }
+  window.__REC = false; $("lgNew1").value = $("lgNew2").value = ""; $("lgNew").hidden = true; $("lgMain").hidden = false;
+  try { history.replaceState(null, "", location.pathname); } catch {}
+  toast("🔒 Mot de passe changé"); boot();
+});
 $("lgBtn").addEventListener("click", doLogin);
 $("lgPass").addEventListener("keydown", (e) => { if (e.key === "Enter") doLogin(); });
-sb.auth.onAuthStateChange((ev) => { if (ev === "SIGNED_OUT") { S.d = {}; S.meds = {}; S.cfg = {}; $("main").innerHTML = ""; showLogin(); } });
+sb.auth.onAuthStateChange((ev) => { if (ev === "PASSWORD_RECOVERY") { window.__REC = true; showNewPwd(); } if (ev === "SIGNED_OUT") { S.d = {}; S.meds = {}; S.cfg = {}; $("main").innerHTML = ""; showLogin(); } });
 boot();

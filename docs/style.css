@@ -104,6 +104,12 @@ body.sideopen #side{transform:none}
   #side{padding-bottom:90px}
   #toast{bottom:calc(76px + env(safe-area-inset-bottom));max-width:90vw;text-align:center}
 }
+button.b.big{display:block;width:100%;font-size:1.4rem;padding:24px 16px;margin:1.2rem 0;border-radius:26px}
+.diffl{list-style:none;padding:0;font-size:1.15rem}.diffl li{padding:10px 14px;margin:6px 0;background:var(--bg);border-radius:14px}
+.lnk{background:none;border:0;color:var(--rose-d);text-decoration:underline;font:inherit;cursor:pointer;padding:4px 0}
+#lgInfo{min-height:1.2em}
+#offline{position:fixed;left:0;right:0;top:0;z-index:60;background:var(--warn);color:var(--warnfg);text-align:center;padding:10px 14px;font-weight:700;font-size:.92rem}
+#offline[hidden]{display:none}
 .onlyprint{display:none}
 @media print{body{background:#fff;color:#000}header,button,#toast,nav,#side,#sideBtn,.noprint{display:none!important}#main{box-shadow:none;border:0}
 body.pfiche #main>*:not(#ficheWrap){display:none!important}

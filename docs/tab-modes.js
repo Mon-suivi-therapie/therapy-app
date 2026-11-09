@@ -1,5 +1,5 @@
 // ===== Réglages globaux, parcours (cycle / grossesse / PMA), TSA / TDAH / SPT =====
-const PARCOURS = ["Suivi de Cycle & Essai Bébé", "Suivi de Grossesse Évolutif", "Parcours PMA (Procréation Médicalement Assistée)"];
+const PARCOURS = ["Suivi de Cycle & Essai Bébé", "Suivi de Grossesse Évolutif", "Parcours PMA (Procréation Médicalement Assistée)", "Post-partum & allaitement"];
 S.set = (() => { try { return { parcours: PARCOURS[0], difficile: false, neuro: false, masquer: false, ...JSON.parse(localStorage.getItem("set") || "{}") }; } catch { return { parcours: PARCOURS[0], difficile: false, neuro: false, masquer: false }; } })();
 function saveSet() { try { localStorage.setItem("set", JSON.stringify(S.set)); } catch {} document.body.classList.toggle("calme", !!S.set.neuro); }
 document.body.classList.toggle("calme", !!S.set.neuro);
@@ -23,6 +23,7 @@ const carnetBlock = () => `<details><summary>🧬 Mon carnet PMA (examens, quest
 function renderCycle() {
   if (S.set.parcours === PARCOURS[1]) return renderGrossesse();
   if (S.set.parcours === PARCOURS[2]) return renderPMA();
+  if (S.set.parcours === PARCOURS[3]) return renderPostPartum();
   return renderCycleEssai() + carnetBlock();
 }
 
@@ -38,6 +39,7 @@ function carnetPma() {
 }
 function renderPMA() {
   return `<h2>Mon Carnet de Bord de Protocole PMA</h2>
+  ${pmaCalendrier()}<hr><h3>💉 Noter une étape</h3>
   ${field("ppDate", "🗓️ Date du contrôle / injection", "date", today())}
   <div class="row">${sel("ppEtape", "Étape :", ["Blocage ovarien", "Stimulation folliculaire", "Déclenchement", "Ponction", "Transfert d'embryon", "Attente Prise de Sang"])}${field("ppMed", "Médicament / Dose (ex: Gonal 150 UI)")}</div>
   ${field("ppEcho", "Résultats Échographie / Prise de sang")}${field("ppNotes", "Symptômes et consignes")}
@@ -254,21 +256,22 @@ const G_SYMP = [
 ];
 function journalGrossesse() {
   const j = cfg(11).jours || {}, dates = Object.keys(j).sort().reverse(), urgent = new Set(G_SYMP.filter((s) => s[1]).map((s) => s[0]));
-  let h = `<p class="muted">Note ce que tu ressens chaque jour : tu pourras le montrer à ta sage-femme ou à ton médecin. Les symptômes marqués ⚠️ demandent un avis médical rapide.</p>
-  ${field("jgDate", "🗓️ Jour", "date", today(), `max="${today()}"`)}
-  <p><b>Symptômes courants</b></p><div class="chips">${G_SYMP.filter((s) => !s[1]).map(([l]) => `<label class="ck"><input type="checkbox" name="gs" value="${esc(l)}"> ${l}</label>`).join("")}</div>
-  <p><b>⚠️ Signes d'alerte</b></p><div class="chips">${G_SYMP.filter((s) => s[1]).map(([l]) => `<label class="ck"><input type="checkbox" name="gs" data-u="1" value="${esc(l)}"> ${l}</label>`).join("")}</div>
+  const ed = (S.jEdit && j[S.jEdit]) || null, coche = (l) => (ed && (ed.sym || []).includes(l) ? "checked" : "");
+  let h = `${ed ? box("info", "✏️ Tu modifies le journal du " + fr(S.jEdit) + ". Change ce que tu veux puis enregistre. " + btn("Annuler", "canceljournal", "sec")) : ""}<p class="muted">Note ce que tu ressens chaque jour : tu pourras le montrer à ta sage-femme ou à ton médecin. Les symptômes marqués ⚠️ demandent un avis médical rapide.</p>
+  ${field("jgDate", "🗓️ Jour", "date", S.jEdit || today(), `max="${today()}"`)}
+  <p><b>Symptômes courants</b></p><div class="chips">${G_SYMP.filter((s) => !s[1]).map(([l]) => `<label class="ck"><input type="checkbox" name="gs" value="${esc(l)}" ${coche(l)}> ${l}</label>`).join("")}</div>
+  <p><b>⚠️ Signes d'alerte</b></p><div class="chips">${G_SYMP.filter((s) => s[1]).map(([l]) => `<label class="ck"><input type="checkbox" name="gs" data-u="1" value="${esc(l)}" ${coche(l)}> ${l}</label>`).join("")}</div>
   <div id="jgAlert"></div><div id="jgTips"></div>
-  <div class="row"><div><label class="f">Gêne globale : <b id="jgIo">0</b>/10</label><input id="jgI" type="range" min="0" max="10" value="0"></div>${field("jgTension", "Tension (ex : 12/7)")}${field("jgMvts", "Mouvements de bébé (ex : nombreux, comme d'habitude)")}${field("jgPoids", "Poids du jour (kg, facultatif)", "number", "", 'step="0.1"')}</div>
-  ${field("jgNote", "Note (facultatif)")}${btn("💾 Enregistrer mon journal du jour", "savejournal")}`;
+  <div class="row"><div><label class="f">Gêne globale : <b id="jgIo">${ed ? ed.gene ?? 0 : 0}</b>/10</label><input id="jgI" type="range" min="0" max="10" value="${ed ? ed.gene ?? 0 : 0}"></div>${field("jgTension", "Tension (ex : 12/7)", "text", ed ? ed.tension || "" : "")}${field("jgMvts", "Mouvements de bébé (ex : nombreux, comme d'habitude)", "text", ed ? ed.mvts || "" : "")}${field("jgPoids", "Poids du jour (kg, facultatif)", "number", ed ? ed.poids || "" : "", 'step="0.1"')}</div>
+  ${field("jgNote", "Note (facultatif)", "text", ed ? ed.note || "" : "")}${btn("💾 Enregistrer mon journal du jour", "savejournal")}`;
   if (dates.length) {
     const cnt = {}; dates.filter((d) => diffDays(today(), d) < 30).forEach((d) => (j[d].sym || []).forEach((s) => (cnt[s] = (cnt[s] || 0) + 1)));
     const top = Object.entries(cnt).sort((a, b) => b[1] - a[1]).slice(0, 6);
     const rec = dates.filter((d) => diffDays(today(), d) < 3).flatMap((d) => (j[d].sym || []).filter((s) => urgent.has(s)));
     if (rec.length) h += box("err", "⚠️ Ces derniers jours tu as noté : <b>" + esc([...new Set(rec)].join(" ; ")) + "</b>. Parles-en sans attendre à ta sage-femme, à ta maternité ou à ton médecin (15 en cas d'urgence).");
     if (top.length) h += `<p class="muted">Symptômes les plus fréquents sur 30 jours : ${esc(top.map(([k, v]) => `${k} (${v})`).join(" · "))}</p>`;
-    const ligne = (d) => `<tr><td>${esc(fr(d))}</td><td>${esc((j[d].sym || []).join(" · "))}</td><td>${esc(j[d].gene ?? "")}</td><td>${esc(j[d].tension || "")}</td><td>${esc(j[d].mvts || "")}</td><td>${esc(j[d].poids || "")}</td><td>${esc(j[d].note || "")}</td><td><button class="b del" data-act="deljournal" data-d="${esc(d)}" title="Supprimer ce jour">🗑️</button></td></tr>`;
-    h += fold(`📋 Mon journal (${dates.length} jour${dates.length > 1 ? "s" : ""})`, `<p class="muted">🗑️ supprime le jour entier (symptômes, tension, poids, note).</p><div class="tw"><table><thead><tr>${["Date", "Symptômes", "Gêne", "Tension", "Mouvements", "Poids", "Note", ""].map((c) => `<th>${c}</th>`).join("")}</tr></thead><tbody>${dates.slice(0, 60).map(ligne).join("")}</tbody></table></div>`);
+    const ligne = (d) => `<tr><td>${esc(fr(d))}</td><td>${esc((j[d].sym || []).join(" · "))}</td><td>${esc(j[d].gene ?? "")}</td><td>${esc(j[d].tension || "")}</td><td>${esc(j[d].mvts || "")}</td><td>${esc(j[d].poids || "")}</td><td>${esc(j[d].note || "")}</td><td style="white-space:nowrap"><button class="b" data-act="editjournal" data-d="${esc(d)}" title="Modifier ce jour">✏️</button><button class="b del" data-act="deljournal" data-d="${esc(d)}" title="Supprimer ce jour">🗑️</button></td></tr>`;
+    h += fold(`📋 Mon journal (${dates.length} jour${dates.length > 1 ? "s" : ""})`, `<p class="muted">✏️ modifie un jour, 🗑️ le supprime en entier (symptômes, tension, poids, note).</p><div class="tw"><table><thead><tr>${["Date", "Symptômes", "Gêne", "Tension", "Mouvements", "Poids", "Note", ""].map((c) => `<th>${c}</th>`).join("")}</tr></thead><tbody>${dates.slice(0, 60).map(ligne).join("")}</tbody></table></div>`);
   }
   return h;
 }
@@ -304,6 +307,8 @@ function afterGrossesse() {
   if ($("jgI")) $("jgI").addEventListener("input", () => ($("jgIo").textContent = val("jgI")));
 }
 Object.assign(ACT_MODES, {
+  editjournal(el) { S.jEdit = el.dataset.d; render(); const f = $("jgDate"); if (f) f.scrollIntoView({ block: "center" }); },
+  canceljournal() { S.jEdit = null; render(); },
   async deljournal(el) {
     const d = el.dataset.d;
     if (!confirm("Supprimer le journal du " + fr(d) + " ? Cette action est définitive.")) return;
@@ -312,8 +317,9 @@ Object.assign(ACT_MODES, {
   },
   async savejournal() {
     const d = val("jgDate"), j = { ...(cfg(11).jours || {}) };
+    if (S.jEdit && S.jEdit !== d) delete j[S.jEdit];
     j[d] = { sym: picked("gs"), gene: +val("jgI"), tension: val("jgTension"), mvts: val("jgMvts"), poids: val("jgPoids"), note: val("jgNote") };
-    if (await saveCfg(11, { jours: j })) { toast("🎉 Journal enregistré !"); render(); }
+    if (await saveCfg(11, { jours: j })) { S.jEdit = null; toast("🎉 Journal enregistré !"); render(); }
   },
 });
 

@@ -41,6 +41,7 @@ function stockHtml(nom, info) {
 
 function renderDash() {
   const date = S.dashDate || today(); S.dashDate = date;
+  if (S.set.difficile && date === today()) return renderDifficile(date);
   const meds = S.meds, { out: manq, total } = manquants(date);
   const deja = [...new Set(rows("historique_prises").filter((r) => r.Date === date).map((r) => r["Médicament"]))].sort();
   let h = `<h2>📅 Prises du jour &amp; Vos Symptômes</h2><p class="muted">Mode actif : <b>${esc(S.set.parcours)}</b></p>
