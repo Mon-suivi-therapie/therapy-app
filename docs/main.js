@@ -15,6 +15,26 @@ const NAV = [
 const ACT = { ...ACT_DASH, ...ACT_CYCLE, ...ACT_HEALTH, ...ACT_DF, ...ACT_MISC, ...ACT_MODES, ...ACT_BILAN, ...ACT_RESUME };
 const CHG = { ...CHG_DASH, ...CHG_HEALTH, ...CHG_CYCLE, ...CHG_SET, ...CHG_MODES, ...CHG_BILAN, ...CHG_RESUME };
 
+// ----- tous les graphiques sont rétractables (l'état est mémorisé) -----
+const CHART_TITLES = { chGJ: "Voir le graphique", chGP: "Voir le graphique", chGM: "🕒 Moyenne par moment de la journée", chPoids: "⚖️ Courbe de poids", chBilan: "🧪 Évolution de ce résultat", chDf: "📈 Douleur, fatigue, sommeil", chCyc: "🔁 Symptômes selon mon cycle", chSo: "🌿 Acné, pilosité, chute de cheveux", chSoT: "📏 Tour de taille", chResG: "🩸 Glycémie du mois", chResD: "🧘 Douleur, fatigue, humeur", chGPoids: "⚖️ Courbe de poids", chGTens: "🩺 Courbe de tension", chNeuro: "📈 Mon évolution", chTests: "🧪 Évolution de mes tests d'ovulation", chCycle: "🌡️ Courbe de température" };
+S.chartClosed = (() => { try { return JSON.parse(localStorage.getItem("chartClosed") || "{}"); } catch { return {}; } })();
+function wrapCharts() {
+  document.querySelectorAll("#main .chart").forEach((c) => {
+    if (c.closest("details")) return;
+    const cv = c.querySelector("canvas"); if (!cv) return;
+    const d = document.createElement("details"); d.className = "chartfold"; d.dataset.cid = cv.id;
+    d.open = !S.chartClosed[cv.id];
+    d.innerHTML = `<summary>${CHART_TITLES[cv.id] || "📈 Graphique"}</summary>`;
+    c.replaceWith(d); d.appendChild(c);
+  });
+}
+document.addEventListener("toggle", (e) => {
+  const d = e.target; if (!d.dataset || !d.dataset.cid) return;
+  if (d.open) delete S.chartClosed[d.dataset.cid]; else S.chartClosed[d.dataset.cid] = 1;
+  try { localStorage.setItem("chartClosed", JSON.stringify(S.chartClosed)); } catch {}
+  if (d.open && charts[d.dataset.cid]) charts[d.dataset.cid].resize();
+}, true);
+
 function render() {
   $("nav").innerHTML = NAV.map(([k, l]) => `<button data-nav="${k}" class="${k === S.tab ? "on" : ""}">${l}</button>`).join("");
   const cur = NAV.find((n) => n[0] === S.tab) || NAV[0];
@@ -22,6 +42,7 @@ function render() {
   let html = S.warn.map((w) => box("warn", "⚠️ " + esc(w))).join("");
   try { html += cur[2](); } catch (e) { console.error(e); html += box("err", "Erreur d'affichage : " + esc(e.message)); }
   $("main").innerHTML = html;
+  wrapCharts();
   try { cur[3] && cur[3](); } catch (e) { console.error(e); }
   window.scrollTo(0, y);
   renderSide();

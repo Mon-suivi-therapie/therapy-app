@@ -110,6 +110,7 @@ button.b.big{display:block;width:100%;font-size:1.4rem;padding:24px 16px;margin:
 #lgInfo{min-height:1.2em}
 #offline{position:fixed;left:0;right:0;top:0;z-index:60;background:var(--warn);color:var(--warnfg);text-align:center;padding:10px 14px;font-weight:700;font-size:.92rem}
 #offline[hidden]{display:none}
+details.chartfold{padding:2px 12px 10px}details.chartfold .chart{margin:.4rem 0 0}
 .onlyprint{display:none}
 @media print{body{background:#fff;color:#000}header,button,#toast,nav,#side,#sideBtn,.noprint{display:none!important}#main{box-shadow:none;border:0}
 body.pfiche #main>*:not(#ficheWrap){display:none!important}
