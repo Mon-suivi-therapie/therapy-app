@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mon suivi Therapy</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌸</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700&family=Playfair+Display:wght@500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+</head>
+<body>
+<header>
+  <h1>Mon suivi Therapy <small>Traitement, SOPK, Fertilité &amp; Pré-Diabète</small></h1>
+  <nav id="nav"></nav>
+</header>
+<section id="login" hidden>
+  <div class="logincard">
+    <h2>🌸 Mon suivi Therapy</h2>
+    <p class="muted">Connexion personnelle. Tu ne la fais qu'une seule fois sur cet appareil : ensuite le site te garde connectée.</p>
+    <label class="f" for="lgMail">Email</label><input id="lgMail" type="email" autocomplete="username" inputmode="email">
+    <label class="f" for="lgPass">Mot de passe</label><input id="lgPass" type="password" autocomplete="current-password">
+    <button class="b" id="lgBtn">Se connecter</button>
+    <p id="lgErr" class="muted" role="alert"></p>
+  </div>
+</section>
+<button id="sideBtn" aria-expanded="false" aria-controls="side">💊 Médicaments</button>
+<aside id="side" aria-label="Médicaments"></aside>
+<main id="main"><p class="muted">Chargement de tes données…</p></main>
+<div id="toast"></div>
+<script src="core.js"></script>
+<script src="tab-dash.js"></script>
+<script src="tab-cycle.js"></script>
+<script src="tab-health.js"></script>
+<script src="tab-misc.js"></script>
+<script src="tab-modes.js"></script>
+<script src="main.js"></script>
+</body>
+</html>

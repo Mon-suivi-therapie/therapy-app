@@ -1,0 +1,111 @@
+:root{
+  --bg:#fdf6f7;--card:#ffffff;--fg:#3b2f3a;--muted:#8a7a88;--line:#f1dde3;
+  --rose:#e8789a;--rose-d:#d2577d;--rose-l:#fde6ee;--mauve:#a78bc9;--mauve-l:#f1eafa;--peach:#ffe9dc;
+  --ok:#e6f6ec;--okfg:#25693f;--warn:#fff3da;--warnfg:#8a5a00;--err:#fde7e7;--errfg:#a52b3a;--info:#ece8fb;--infofg:#4a3d8f;
+  --shadow:0 4px 18px rgba(167,100,130,.10);--r:16px
+}
+@media(prefers-color-scheme:dark){:root{
+  --bg:#1e171d;--card:#2a2129;--fg:#f4e9ef;--muted:#b9a5b3;--line:#40323d;
+  --rose:#f08cab;--rose-d:#e0668d;--rose-l:#3d2530;--mauve:#b9a0dc;--mauve-l:#30283d;--peach:#3a2b27;
+  --ok:#1d3326;--okfg:#9be0b0;--warn:#3b3015;--warnfg:#ffd98a;--err:#401d22;--errfg:#ff9fae;--info:#2b2748;--infofg:#c3b8ff;--shadow:none}}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:radial-gradient(1200px 500px at 85% -10%,var(--rose-l),transparent 60%),radial-gradient(900px 500px at -10% 0,var(--mauve-l),transparent 55%),var(--bg);background-attachment:fixed;color:var(--fg);font:clamp(15px,.35vw + 14px,19px)/1.65 'Nunito',system-ui,-apple-system,'Segoe UI',sans-serif}
+header,main{max-width:min(1280px,100%);margin:0 auto;padding:0 clamp(10px,3vw,40px)}
+header{padding-top:26px;text-align:center}
+h1{font-family:'Playfair Display',Georgia,serif;font-weight:600;font-size:2rem;margin:0 0 .2rem;color:var(--rose-d);letter-spacing:.2px}
+h1::before{content:"🌸 "}
+h1 small{display:block;font-family:'Nunito',sans-serif;font-size:.95rem;color:var(--muted);font-weight:400;margin-top:.2rem}
+h2{font-family:'Playfair Display',Georgia,serif;font-weight:600;font-size:1.55rem;margin:.2rem 0 .6rem;color:var(--rose-d)}
+h3{font-family:'Playfair Display',Georgia,serif;font-weight:600;font-size:1.2rem;margin:1.8rem 0 .5rem;color:var(--fg);padding-bottom:.3rem;border-bottom:2px solid var(--rose-l)}
+h4{font-size:1.02rem;font-weight:700;margin:1.2rem 0 .3rem;color:var(--mauve)}
+nav{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;margin:18px 0 6px;position:sticky;top:0;z-index:5;padding:10px 0;background:linear-gradient(var(--bg) 70%,transparent)}
+nav button{background:var(--card);border:1px solid var(--line);border-radius:999px;padding:7px 15px;font:600 .9rem 'Nunito',sans-serif;color:var(--fg);cursor:pointer;box-shadow:var(--shadow);transition:all .15s}
+nav button:hover{border-color:var(--rose);transform:translateY(-1px)}
+nav button.on{background:linear-gradient(135deg,var(--rose),var(--rose-d));color:#fff;border-color:transparent}
+main{padding-bottom:70px}
+#main{background:var(--card);border-radius:24px;box-shadow:var(--shadow);padding:clamp(14px,2.4vw,34px);margin-top:10px;border:1px solid var(--line)}
+.muted{color:var(--muted);font-size:.92rem}
+hr{border:0;height:1px;background:linear-gradient(90deg,transparent,var(--rose),transparent);opacity:.35;margin:1.6rem 0}
+.row{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,230px),1fr));gap:4px 16px;align-items:start}
+.fg{min-width:0}
+label.f{display:block;font-size:.9rem;font-weight:700;color:var(--muted);margin:.8rem 0 .25rem}
+input[type=text],input[type=number],input[type=date],input[type=time],select,textarea{width:100%;padding:10px 13px;border:1.5px solid var(--line);border-radius:12px;background:var(--bg);color:var(--fg);font:inherit;font-size:.97rem;transition:border .15s,box-shadow .15s}
+input:focus,select:focus,textarea:focus{outline:0;border-color:var(--rose);box-shadow:0 0 0 4px var(--rose-l)}
+textarea{min-height:90px;resize:vertical}
+input[type=range]{width:100%;accent-color:var(--rose)}
+input[type=checkbox]{width:19px;height:19px;accent-color:var(--rose);flex:none}
+.ck{display:flex;gap:10px;align-items:center;margin:.35rem 0;cursor:pointer}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chips .ck{background:var(--bg);border:1.5px solid var(--line);border-radius:999px;padding:5px 14px;margin:0;font-size:.93rem}
+.chips .ck:has(input:checked){background:var(--rose-l);border-color:var(--rose)}
+button.b{background:linear-gradient(135deg,var(--rose),var(--rose-d));color:#fff;border:0;border-radius:999px;padding:10px 22px;font:700 .95rem 'Nunito',sans-serif;cursor:pointer;margin:.7rem .5rem .4rem 0;box-shadow:0 4px 12px rgba(210,87,125,.28);transition:transform .12s,box-shadow .12s}
+button.b:hover{transform:translateY(-1px);box-shadow:0 6px 16px rgba(210,87,125,.35)}
+button.b.sec{background:var(--mauve-l);color:var(--fg);box-shadow:none;border:1.5px solid var(--mauve)}
+button.b.del{background:var(--err);color:var(--errfg);box-shadow:none;border:1.5px solid var(--errfg)}
+button.b:disabled{opacity:.5;transform:none}
+.box{padding:12px 16px;border-radius:14px;margin:.7rem 0;border-left:5px solid;line-height:1.55}
+.box.ok{background:var(--ok);color:var(--okfg);border-color:var(--okfg)}
+.box.warn{background:var(--warn);color:var(--warnfg);border-color:var(--warnfg)}
+.box.err{background:var(--err);color:var(--errfg);border-color:var(--errfg)}
+.box.info{background:var(--info);color:var(--infofg);border-color:var(--infofg)}
+details{background:var(--bg);border:1.5px solid var(--line);border-radius:14px;padding:6px 16px;margin:.9rem 0}
+details[open]{background:transparent}
+summary{cursor:pointer;font-weight:700;padding:8px 0;color:var(--rose-d)}
+.metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin:.8rem 0}
+.metric{background:linear-gradient(135deg,var(--rose-l),var(--mauve-l));border-radius:16px;padding:14px 16px}
+.metric b{display:block;font-family:'Playfair Display',serif;font-size:1.6rem;color:var(--rose-d)}
+.metric span{font-size:.85rem;color:var(--muted);font-weight:600}
+.tw{overflow-x:auto;border:1px solid var(--line);border-radius:14px;margin:.6rem 0}
+table{border-collapse:collapse;width:100%;font-size:.9rem}
+th{background:var(--rose-l);color:var(--rose-d);font-weight:700;text-align:left;white-space:nowrap}
+th,td{padding:8px 11px;border-bottom:1px solid var(--line);vertical-align:top}
+tr:last-child td{border-bottom:0}
+tbody tr:nth-child(even){background:color-mix(in srgb,var(--bg) 60%,transparent)}
+td input,td select{padding:5px 8px;font-size:.85rem;min-width:80px;border-radius:8px}
+td .b{padding:5px 11px;margin:0 3px 0 0;box-shadow:none}
+.bar{height:12px;background:var(--rose-l);border-radius:999px;overflow:hidden;margin:.5rem 0}
+.bar i{display:block;height:100%;background:linear-gradient(90deg,var(--mauve),var(--rose));border-radius:999px;transition:width .3s}
+.chart{position:relative;height:290px;margin:.8rem 0;padding:10px;background:var(--bg);border-radius:14px}
+ul{padding-left:1.3rem}li{margin:.25rem 0}
+#toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--rose-d);color:#fff;padding:12px 22px;border-radius:999px;opacity:0;transition:opacity .25s;pointer-events:none;z-index:9;font-weight:700;box-shadow:0 6px 20px rgba(0,0,0,.2)}
+#toast.on{opacity:1}
+/* Mode calme (TDAH / TSA) */
+body.calme{background:#f6f4ef}body.calme *{transition:none!important;animation:none!important}body.calme #main{line-height:1.85}
+@media(prefers-color-scheme:dark){body.calme{background:#1f1d1a}}
+/* Volet latéral rétractable : médicaments */
+#sideBtn{position:fixed;left:0;top:140px;z-index:20;writing-mode:vertical-rl;transform:rotate(180deg);background:linear-gradient(135deg,var(--rose),var(--rose-d));color:#fff;border:0;border-radius:0 14px 14px 0;padding:16px 9px;font:700 .95rem 'Nunito',sans-serif;cursor:pointer;box-shadow:var(--shadow);transition:left .3s}
+body.sideopen #sideBtn{left:min(360px,92vw)}
+#side{position:fixed;left:0;top:0;bottom:0;width:min(360px,92vw);overflow-y:auto;background:var(--card);border-right:1px solid var(--line);box-shadow:6px 0 24px rgba(167,100,130,.18);padding:18px 18px 40px;z-index:15;transform:translateX(-102%);transition:transform .3s}
+body.sideopen #side{transform:none}
+#side h3{margin-top:.2rem}
+@media(max-width:640px){body{font-size:16px}header,main{padding:0 10px}#main{padding:16px 14px;border-radius:18px}h1{font-size:1.6rem}nav{gap:6px}nav button{padding:6px 11px;font-size:.82rem}}
+@media print{body{background:#fff}header,button,#toast,nav{display:none!important}#main{box-shadow:none;border:0}}
+
+/* Calendrier de grossesse */
+.tri{margin:1.2rem 0;border:3px solid #f2a39c;border-radius:20px;overflow:hidden;background:var(--card)}
+.tri-h{background:#f3a8a1;color:#fff;text-align:center;font-family:'Playfair Display',serif;font-size:1.25rem;padding:8px;letter-spacing:.5px}
+.tri-b{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:6px;padding:12px 8px}
+.tri-c{text-align:center;padding:6px}
+.tri-c h5{margin:.2rem 0 .6rem;font-family:'Playfair Display',serif;font-size:1.05rem;color:var(--rose-d);text-transform:uppercase;letter-spacing:.5px}
+.tri-c h5::before,.tri-c h5::after{content:"—";margin:0 .4rem;color:#f2a39c}
+.tri-l{padding:3px 0;font-size:1.02rem}
+.tri-l.now{background:var(--rose-l);border-radius:999px;font-weight:800;color:var(--rose-d);box-shadow:0 0 0 2px var(--rose)}
+.tri-t{font-size:.82rem;font-weight:700;margin:.7rem 0 0}
+
+.dwrap{display:flex;gap:8px;align-items:center}
+.dwrap input[type=text]{flex:1}
+.dpick{width:46px!important;padding:8px 4px!important;cursor:pointer;flex:none}
+
+.chart{height:clamp(220px,32vw,380px)}
+.btnbig{font-size:1.2rem!important;padding:16px 28px!important}
+.ctr-n{font-family:'Playfair Display',serif;font-size:2.4rem;color:var(--rose-d);text-align:center;line-height:1.1}
+.cbox{background:var(--bg);border:1.5px solid var(--line);border-radius:16px;padding:14px;margin:.6rem 0;text-align:center}
+.tip{background:var(--mauve-l);border-left:5px solid var(--mauve);border-radius:12px;padding:8px 14px;margin:.4rem 0}
+@media(max-width:640px){.tri-b{grid-template-columns:1fr 1fr}.dpick{width:42px!important}}
+
+#login{position:fixed;inset:0;z-index:50;display:flex;align-items:center;justify-content:center;padding:18px;background:radial-gradient(900px 500px at 80% 0,var(--rose-l),transparent 60%),var(--bg)}
+#login[hidden]{display:none}
+.logincard{width:min(420px,100%);background:var(--card);border:1px solid var(--line);border-radius:24px;box-shadow:var(--shadow);padding:28px}
+.logincard h2{text-align:center;margin-top:0}
+#lgErr{color:var(--errfg);min-height:1.4em}
