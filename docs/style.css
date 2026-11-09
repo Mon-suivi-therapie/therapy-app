@@ -74,12 +74,36 @@ ul{padding-left:1.3rem}li{margin:.25rem 0}
 body.calme{background:#f6f4ef}body.calme *{transition:none!important;animation:none!important}body.calme #main{line-height:1.85}
 @media(prefers-color-scheme:dark){body.calme{background:#1f1d1a}}
 /* Volet latéral rétractable : médicaments */
-#sideBtn{position:fixed;left:12px;bottom:calc(14px + env(safe-area-inset-bottom));top:auto;z-index:20;background:linear-gradient(135deg,var(--rose),var(--rose-d));color:#fff;border:0;border-radius:999px;padding:12px 18px;font:700 .95rem 'Nunito',sans-serif;cursor:pointer;box-shadow:var(--shadow);-webkit-appearance:none;appearance:none}
-body.sideopen #sideBtn{background:var(--card);color:var(--rose-d);border:2px solid var(--rose)}
-#side{position:fixed;left:0;top:0;bottom:0;width:min(360px,92vw);overflow-y:auto;background:var(--card);border-right:1px solid var(--line);box-shadow:6px 0 24px rgba(167,100,130,.18);padding:18px 18px 90px;z-index:15;transform:translateX(-102%);transition:transform .3s}
+#sideBtn{position:fixed;left:0;top:140px;z-index:20;writing-mode:vertical-rl;transform:rotate(180deg);background:linear-gradient(135deg,var(--rose),var(--rose-d));color:#fff;border:0;border-radius:0 14px 14px 0;padding:16px 9px;font:700 .95rem 'Nunito',sans-serif;cursor:pointer;box-shadow:var(--shadow);transition:left .3s}
+body.sideopen #sideBtn{left:min(360px,92vw)}
+#side{position:fixed;left:0;top:0;bottom:0;width:min(360px,92vw);overflow-y:auto;background:var(--card);border-right:1px solid var(--line);box-shadow:6px 0 24px rgba(167,100,130,.18);padding:18px 18px 40px;z-index:15;transform:translateX(-102%);transition:transform .3s}
 body.sideopen #side{transform:none}
 #side h3{margin-top:.2rem}
-@media(max-width:640px){body{font-size:16px}header,main{padding:0 10px}#main{padding:16px 14px;border-radius:18px}h1{font-size:1.6rem}nav{gap:6px}nav button{padding:6px 11px;font-size:.82rem}}
+@media(max-width:640px){
+  body{font-size:16px;-webkit-text-size-adjust:100%}
+  header,main{padding:0 10px}
+  header{padding-top:max(14px,env(safe-area-inset-top))}
+  h1{font-size:1.45rem}h1 small{font-size:.82rem}
+  h2{font-size:1.3rem}h3{font-size:1.1rem}
+  nav{flex-wrap:nowrap;justify-content:flex-start;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;gap:6px;margin:10px -10px 4px;padding:8px 10px;scroll-snap-type:x proximity}
+  nav::-webkit-scrollbar{display:none}
+  nav button{flex:none;padding:8px 13px;font-size:.85rem;white-space:nowrap;scroll-snap-align:start}
+  #main{padding:14px 12px;border-radius:18px;margin-top:4px}
+  main{padding-bottom:calc(90px + env(safe-area-inset-bottom))}
+  input[type=text],input[type=number],input[type=date],input[type=time],input[type=email],input[type=password],select,textarea{font-size:16px;padding:11px 12px}
+  td input,td select{font-size:16px}
+  button.b{padding:12px 20px;margin:.5rem .4rem .3rem 0}
+  .metrics{grid-template-columns:repeat(2,1fr);gap:8px}
+  .metric{padding:11px 12px}.metric b{font-size:1.35rem}
+  .chart{height:230px;padding:6px}
+  details{padding:4px 12px}
+  .tri-b{grid-template-columns:repeat(auto-fit,minmax(140px,1fr))}
+  /* bouton médicaments : pastille horizontale en bas (le texte vertical s'affiche mal sur iPhone) */
+  #sideBtn{left:12px;top:auto;bottom:calc(14px + env(safe-area-inset-bottom));writing-mode:horizontal-tb;transform:none;border-radius:999px;padding:12px 18px;-webkit-appearance:none;appearance:none}
+  body.sideopen #sideBtn{left:12px;background:var(--card);color:var(--rose-d);border:2px solid var(--rose)}
+  #side{padding-bottom:90px}
+  #toast{bottom:calc(76px + env(safe-area-inset-bottom));max-width:90vw;text-align:center}
+}
 .onlyprint{display:none}
 @media print{body{background:#fff;color:#000}header,button,#toast,nav,#side,#sideBtn,.noprint{display:none!important}#main{box-shadow:none;border:0}
 body.pfiche #main>*:not(#ficheWrap){display:none!important}
