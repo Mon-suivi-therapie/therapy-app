@@ -11,7 +11,11 @@ function humeurBlock() {
   return `<h4>💭 Mon humeur du jour</h4><p class="muted">Un seul clic. Elle sera visible dans ton résumé du mois et croisée avec ton cycle. S'enregistre pour le jour choisi ci-dessus.</p>
   <div class="chips">${HUMEURS.map(([v, e, l]) => `<label class="ck"><input type="radio" name="hu" value="${v}" ${v === cur ? "checked" : ""}> ${e} ${l}</label>`).join("")}</div>
   ${btn("💾 Enregistrer mon humeur", "savehumeur", "sec")}
-  ${rec.length ? `<p class="muted">Derniers jours : ${rec.slice().reverse().map((d) => `${fr2(d)} ${humEmoji(j[d].h)}`).join(" · ")}</p>` : ""}`;
+  <p class="muted" id="huRec">${humRecent()}</p>`;
+}
+function humRecent() {
+  const j = humeurs(), rec = Object.keys(j).sort().reverse().slice(0, 14);
+  return rec.length ? "Derniers jours : " + rec.slice().reverse().map((d) => `${fr2(d)} ${humEmoji(j[d].h)}`).join(" · ") : "";
 }
 
 // ---------- symptômes selon le jour du cycle ----------
@@ -142,7 +146,8 @@ Object.assign(ACT_DF, {
     if (!v) { toast("Choisis d'abord une humeur."); return; }
     const jour = dval("dfDate") || val("dfDate") || today(), j = { ...humeurs() };
     j[jour] = { h: v };
-    if (await saveCfg(14, { jours: j })) { toast("💭 Humeur enregistrée"); render(); }
+    // pas de render() : ce que tu as déjà rempli plus haut (douleur, fatigue…) reste en place
+    if (await saveCfg(14, { jours: j })) { toast("💭 Humeur enregistrée"); if ($("huRec")) $("huRec").textContent = humRecent(); }
   },
 });
 
@@ -166,3 +171,13 @@ Object.assign(ACT_DF, {
     if (confirm("Supprimer cette mesure de tension ?") && await saveCfg(15, { releves: tnReleves().filter((r) => String(r.id) !== id) })) { toast("Mesure supprimée"); render(); }
   },
 });
+
+// « Enregistrer ce jour » enregistre aussi l'humeur cochée (un seul clic suffit, rien n'est perdu)
+{
+  const _savedf = ACT_DF.savedf;
+  ACT_DF.savedf = async function (el) {
+    const v = +(document.querySelector('input[name="hu"]:checked') || {}).value;
+    if (v) { const j = { ...humeurs() }; j[val("dfDate") || today()] = { h: v }; await saveCfg(14, { jours: j }); }
+    return _savedf(el);
+  };
+}
