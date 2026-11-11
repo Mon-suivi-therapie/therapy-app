@@ -223,8 +223,7 @@ function renderDouleur() {
   <p><b>Où as-tu mal ? (fibromyalgie)</b></p>${checks("dz", ["Nuque", "Épaules", "Dos", "Hanches", "Bras", "Mains", "Jambes", "Pieds", "Tête"])}
   <p><b>Symptômes d'endométriose aujourd'hui</b></p>${checks("de", ["Douleurs pelviennes", "Règles douloureuses", "Douleurs pendant les rapports", "Douleurs en allant à la selle", "Douleurs urinaires", "Ballonnements importants", "Douleurs dans le dos / les jambes"])}
   ${field("dfNote", "Note (facultatif)")}<div id="dfWarn"></div>
-  ${humeurBlock()}
-  <p class="muted">Douleur dans la poitrine, essoufflement inhabituel ou malaise : appelle le 15.</p>${btn("💾 Enregistrer ce jour", "savedf")}`;
+  <p class="muted">Douleur dans la poitrine, essoufflement inhabituel ou malaise : appelle le 15.</p>${btn("💾 Enregistrer ce jour", "savedf")}<hr>${humeurBlock()}`;
   if (d.length) {
     const byDay = {};
     d.forEach((r) => { (byDay[r.Date] = byDay[r.Date] || []).push(r); });
