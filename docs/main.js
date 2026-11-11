@@ -35,7 +35,40 @@ document.addEventListener("toggle", (e) => {
   if (d.open && charts[d.dataset.cid]) charts[d.dataset.cid].resize();
 }, true);
 
+// ----- ce que tu as commencé à écrire dans un formulaire n'est plus perdu quand tu en enregistres un AUTRE -----
+const DIRTY = new Set(); // champs modifiés par toi et pas encore enregistrés
+const FORM_SEL = "#main input, #main select, #main textarea, #side input, #side select, #side textarea";
+const fkey = (el) => {
+  if (!el || el.nodeType !== 1 || ["file", "button", "submit"].includes(el.type)) return null;
+  if (el.id) return "#" + el.id;
+  return el.name ? "n:" + el.name + "=" + (el.type === "checkbox" || el.type === "radio" ? el.value : "") : null;
+};
+const fread = (el, k) => (k[0] === "#" ? READ.has(k.slice(1)) : READ.has("n:" + el.name));
+function markDirty(e) { const k = fkey(e.target); if (k && e.target.closest("#main, #side")) DIRTY.add(k); }
+document.addEventListener("input", markDirty, true);
+document.addEventListener("change", markDirty, true);
+function snapForm() {
+  const m = new Map(); S.actRead = new Set(READ);
+  document.querySelectorAll(FORM_SEL).forEach((el) => {
+    const k = fkey(el); if (!k || !DIRTY.has(k) || fread(el, k)) return;
+    m.set(k, { v: el.value, c: el.checked, iso: el.dataset ? el.dataset.iso : undefined });
+  });
+  return m;
+}
+function restoreForm(m) {
+  document.querySelectorAll(FORM_SEL).forEach((el) => {
+    const k = fkey(el), s = k && m.get(k); if (!s) return;
+    if (el.type === "checkbox" || el.type === "radio") el.checked = s.c;
+    else { el.value = s.v; if (s.iso !== undefined && el.dataset) el.dataset.iso = s.iso; }
+    el.dispatchEvent(new Event(el.id || el.type !== "checkbox" ? "input" : "change", { bubbles: true })); // remet à jour les petits affichages (curseurs, alertes)
+  });
+}
+function forgetRead(used) {
+  used.forEach((r) => { if (r.startsWith("n:")) [...DIRTY].forEach((k) => k.startsWith(r + "=") && DIRTY.delete(k)); else DIRTY.delete("#" + r); });
+}
+
 function render() {
+  const keep = S.inAct ? snapForm() : null;
   $("nav").innerHTML = NAV.map(([k, l]) => `<button data-nav="${k}" class="${k === S.tab ? "on" : ""}">${l}</button>`).join("");
   const cur = NAV.find((n) => n[0] === S.tab) || NAV[0];
   const y = window.scrollY;
@@ -46,6 +79,7 @@ function render() {
   try { cur[3] && cur[3](); } catch (e) { console.error(e); }
   window.scrollTo(0, y);
   renderSide();
+  if (keep && keep.size) restoreForm(keep);
 }
 
 function sideOpen() { try { return localStorage.getItem("sideOpen") === "1"; } catch { return false; } }
@@ -62,11 +96,12 @@ $("sideBtn").addEventListener("click", () => setSide(!document.body.classList.co
 
 document.addEventListener("click", async (e) => {
   const n = e.target.closest("[data-nav]");
-  if (n) { S.tab = n.dataset.nav; location.hash = S.tab; render(); window.scrollTo(0, 0); return; }
+  if (n) { DIRTY.clear(); S.tab = n.dataset.nav; location.hash = S.tab; render(); window.scrollTo(0, 0); return; }
   const a = e.target.closest("[data-act]");
   if (a && ACT[a.dataset.act]) {
-    a.disabled = true;
+    a.disabled = true; READ.clear(); S.actRead = null; S.inAct = true;
     try { await ACT[a.dataset.act](a); } catch (err) { console.error(err); toast("Erreur : " + err.message); }
+    S.inAct = false; forgetRead(S.actRead || READ);
     a.disabled = false;
   }
 });

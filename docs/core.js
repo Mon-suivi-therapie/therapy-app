@@ -9,6 +9,7 @@ const MOMENTS = [["Matin","prend_matin",true,"🌅"],["Midi","prend_midi",false,
 
 // ---------- utilitaires ----------
 const $ = (id) => document.getElementById(id);
+const READ = new Set(); // champs lus par l'action en cours (voir main.js)
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const num = (v) => { const n = parseFloat(String(v ?? "").replace(",", ".").replace(/[^\d.\-]/g, "")); return isNaN(n) ? null : n; };
 const avg = (a) => a.length ? a.reduce((x, y) => x + y, 0) / a.length : null;
@@ -102,14 +103,14 @@ const area = (id, label, val = "", ph = "") => `<div class="fg"><label class="f"
 const sel = (id, label, opts, val = "") => `<div class="fg"><label class="f" for="${id}">${label}</label><select id="${id}">${opts.map((o) => `<option${o === val ? " selected" : ""}>${esc(o)}</option>`).join("")}</select></div>`;
 const chk = (id, label, on = false, extra = "") => `<label class="ck"><input type="checkbox" id="${id}" ${on ? "checked" : ""} ${extra}> ${label}</label>`;
 const checks = (name, opts) => `<div class="chips">${opts.map((o) => `<label class="ck"><input type="checkbox" name="${name}" value="${esc(o)}"> ${esc(o)}</label>`).join("")}</div>`;
-const picked = (name) => [...document.querySelectorAll(`input[name="${name}"]:checked`)].map((e) => e.value);
+const picked = (name) => { READ.add("n:" + name); return [...document.querySelectorAll(`input[name="${name}"]:checked`)].map((e) => e.value); };
 const fold = (title, html, open = false) => `<details ${open ? "open" : ""}><summary>${title}</summary>${html}</details>`;
 const box = (kind, html) => `<div class="box ${kind}">${html}</div>`;
 const metric = (label, value) => `<div class="metric"><span>${label}</span><b>${value}</b></div>`;
 const bar = (p) => `<div class="bar"><i style="width:${Math.round(Math.max(0, Math.min(1, p)) * 100)}%"></i></div>`;
 const btn = (label, act, cls = "", data = "") => `<button class="b ${cls}" data-act="${act}" ${data}>${label}</button>`;
-const val = (id) => ($(id) ? $(id).value : "");
-const ck = (id) => ($(id) ? $(id).checked : false);
+const val = (id) => { READ.add(id); return $(id) ? $(id).value : ""; };
+const ck = (id) => { READ.add(id); return $(id) ? $(id).checked : false; };
 
 function table(cols, data, empty = "Aucune donnée.") {
   if (!data.length) return `<p class="muted">${empty}</p>`;
@@ -221,4 +222,4 @@ function parseFr(t) {
   if (y < 1900 || y > 2100 || dt.getUTCMonth() !== mo - 1 || dt.getUTCDate() !== d) return null;
   return isoD(dt);
 }
-const dval = (id) => ($(id) ? $(id).dataset.iso || "" : "");
+const dval = (id) => { READ.add(id); return $(id) ? $(id).dataset.iso || "" : ""; };

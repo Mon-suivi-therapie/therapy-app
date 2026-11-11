@@ -307,8 +307,8 @@ function afterGrossesse() {
   if ($("jgI")) $("jgI").addEventListener("input", () => ($("jgIo").textContent = val("jgI")));
 }
 Object.assign(ACT_MODES, {
-  editjournal(el) { S.jEdit = el.dataset.d; render(); const f = $("jgDate"); if (f) f.scrollIntoView({ block: "center" }); },
-  canceljournal() { S.jEdit = null; render(); },
+  editjournal(el) { DIRTY.clear(); S.jEdit = el.dataset.d; render(); const f = $("jgDate"); if (f) f.scrollIntoView({ block: "center" }); },
+  canceljournal() { DIRTY.clear(); S.jEdit = null; render(); },
   async deljournal(el) {
     const d = el.dataset.d;
     if (!confirm("Supprimer le journal du " + fr(d) + " ? Cette action est définitive.")) return;

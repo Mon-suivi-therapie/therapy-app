@@ -101,8 +101,8 @@ Object.assign(ACT_DF, {
     j[d] = { acne: +val("soA"), poils: +val("soP"), cheveux: +val("soC"), taille: num(val("soT")), sym: picked("so"), note: val("soN") };
     if (await saveCfg(19, { jours: j })) { S.soEdit = null; toast("🎉 Point enregistré !"); render(); }
   },
-  soedit(el) { S.soEdit = el.dataset.d; render(); const f = $("soDate"); if (f) f.scrollIntoView({ block: "center" }); },
-  socancel() { S.soEdit = null; render(); },
+  soedit(el) { DIRTY.clear(); S.soEdit = el.dataset.d; render(); const f = $("soDate"); if (f) f.scrollIntoView({ block: "center" }); },
+  socancel() { DIRTY.clear(); S.soEdit = null; render(); },
   async sodel(el) { if (!confirm("Supprimer le point du " + fr(el.dataset.d) + " ?")) return; const j = { ...sopk() }; delete j[el.dataset.d]; if (await saveCfg(19, { jours: j })) { toast("Point supprimé"); render(); } },
 });
 
