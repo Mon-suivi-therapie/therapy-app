@@ -64,7 +64,8 @@ function lignesFiche(vals) {
   const ex = rows("examens_pma").sort((a, c) => c.Date.localeCompare(a.Date)).slice(0, 4).map((r) => `${r.Date} : ${r.Examen} (${r.Statut || ""})`);
   if (ex.length) fiche.push(["🧬 Examens PMA (4 derniers)", ex]);
 
-  const q = rows("questions_medecin").filter((r) => r["Posée"] !== "Oui").slice(0, 5).map((r) => r.Question);
+  const rx = exFicheLignes(); if (rx.length) fiche.push(["🧬 Résultats d'examens PMA (derniers)", rx]);
+  const q = qrEnAttente().map((r) => (r.Pour ? "[" + r.Pour + "] " : "") + r.Question);
   fiche.push(["❓ Questions à poser", q.length ? q : ["Aucune question en attente"]]);
   return fiche;
 }
@@ -95,6 +96,7 @@ const HIST_SECTIONS = [
   ["suivi_neuro", "Mes check-ins TDAH · TSA · SPT", {}],
   ["resultats_bilans", "Mes résultats de prises de sang", {}],
   ["suivi_pma", "Mon protocole PMA", {}],
+  ["questions_medecin", "Mes questions pour le médecin (réponses incluses)", { choix: { "Posée": ["Non", "Oui"] } }],
   ["examens_pma", "Mes examens PMA", { choix: { Statut: ["À prendre", "Rendez-vous pris", "Fait", "Résultat reçu"] } }],
 ];
 function renderHisto() {

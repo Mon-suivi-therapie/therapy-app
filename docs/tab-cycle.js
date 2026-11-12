@@ -137,7 +137,7 @@ function afterCycle() {
 function renderRdv() {
   const rp = rows("rdv_a_prendre"), rdv = rows("rdv_medicaux").map((r) => ({ ...r, Statut: r.Statut || "À venir" })).sort((a, b) => a.Date.localeCompare(b.Date));
   const lbl = (r) => `${r.Date} - ${r["Médecin / Spécialité"] || ""} (n°${r.id})`;
-  let h = `<h2>📅 Gestion de tes Rendez-vous</h2><h3>📞 RDV à reprendre</h3>
+  let h = `<h2>📅 Gestion de tes Rendez-vous</h2>${questionsRapides()}<hr><h3>📞 RDV à reprendre</h3>
   <p class="muted">Les rendez-vous que tu dois encore prendre (kiné, échographie cardiaque...). Une étape à la fois.</p>
   <div class="row">${sel("rpSpec", "Spécialité", ["Kiné", "Échographie cardiaque / cardiologue", "Gynécologue / équipe PMA", "Endocrinologue / diabétologue", "Médecin traitant", "Autre"])}${field("rpTel", "Téléphone (facultatif)")}</div>
   ${field("rpAutre", "Si « Autre », précise la spécialité")}${field("rpPourquoi", "Pour quoi ? (ordonnance, contrôle...)")}

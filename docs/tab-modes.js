@@ -22,9 +22,9 @@ const CHG_SET = {
 const carnetBlock = () => `<details><summary>🧬 Mon carnet PMA (examens, questions, protocole)</summary>${carnetPma()}</details>`;
 function renderCycle() {
   if (S.set.parcours === PARCOURS[1]) return renderGrossesse();
-  if (S.set.parcours === PARCOURS[2]) return renderPMA() + renderSopk() + prepaBebe();
+  if (S.set.parcours === PARCOURS[2]) return renderPMA() + renderSopk() + resultatsPma() + prepaBebe();
   if (S.set.parcours === PARCOURS[3]) return renderPostPartum();
-  return renderCycleEssai() + carnetBlock() + renderSopk() + prepaBebe();
+  return renderCycleEssai() + carnetBlock() + renderSopk() + resultatsPma() + prepaBebe();
 }
 
 // ---------- PMA ----------

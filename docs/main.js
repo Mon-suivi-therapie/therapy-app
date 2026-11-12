@@ -1,10 +1,12 @@
 // ===== Navigation, rendu et événements =====
 const NAV = [
+  ["today", "☀️ Aujourd'hui", renderToday, null],
   ["dash", "📱 Tableau de Bord", renderDash, null],
   ["cycle", "🌸 Mon Suivi Féminin", renderCycle, () => { afterCycle(); if (S.set.parcours === PARCOURS[3]) afterPostPartum(); if (S.set.parcours === PARCOURS[0] || S.set.parcours === PARCOURS[2]) afterSopk(); }],
   ["rdv", "📅 Rendez-vous Médicaux", renderRdv, null],
   ["health", "🥗 Suivi Glycémie & Nutrition", renderHealth, afterHealth],
   ["df", "🧘 Douleur & Énergie", renderDouleur, afterDouleur],
+  ["journal", "📝 Mon journal", renderJournal, null],
   ["tsa", "🧩 TSA", () => renderTrouble("TSA"), () => afterTrouble("TSA")],
   ["tdah", "⚡ TDAH", () => renderTrouble("TDAH"), () => afterTrouble("TDAH")],
   ["spt", "🌿 SPT", () => renderTrouble("SPT"), () => afterTrouble("SPT")],
@@ -12,8 +14,8 @@ const NAV = [
   ["fiche", "📄 Fiche pour mes médecins", renderFiche, null],
   ["histo", "📜 Historique & Corrections", renderHisto, null],
 ];
-const ACT = { ...ACT_DASH, ...ACT_CYCLE, ...ACT_HEALTH, ...ACT_DF, ...ACT_MISC, ...ACT_MODES, ...ACT_BILAN, ...ACT_RESUME };
-const CHG = { ...CHG_DASH, ...CHG_HEALTH, ...CHG_CYCLE, ...CHG_SET, ...CHG_MODES, ...CHG_BILAN, ...CHG_RESUME };
+const ACT = { ...ACT_DASH, ...ACT_CYCLE, ...ACT_HEALTH, ...ACT_DF, ...ACT_MISC, ...ACT_MODES, ...ACT_BILAN, ...ACT_RESUME, ...ACT_NEW };
+const CHG = { ...CHG_DASH, ...CHG_HEALTH, ...CHG_CYCLE, ...CHG_SET, ...CHG_MODES, ...CHG_BILAN, ...CHG_RESUME, ...CHG_NEW };
 
 // ----- tous les graphiques sont rétractables (l'état est mémorisé) -----
 const CHART_TITLES = { chGJ: "Voir le graphique", chGP: "Voir le graphique", chGM: "🕒 Moyenne par moment de la journée", chPoids: "⚖️ Courbe de poids", chBilan: "🧪 Évolution de ce résultat", chDf: "📈 Douleur, fatigue, sommeil", chCyc: "🔁 Symptômes selon mon cycle", chSo: "🌿 Acné, pilosité, chute de cheveux", chSoT: "📏 Tour de taille", chResG: "🩸 Glycémie du mois", chResD: "🧘 Douleur, fatigue, humeur", chGPoids: "⚖️ Courbe de poids", chGTens: "🩺 Courbe de tension", chNeuro: "📈 Mon évolution", chTests: "🧪 Évolution de mes tests d'ovulation", chCycle: "🌡️ Courbe de température" };
