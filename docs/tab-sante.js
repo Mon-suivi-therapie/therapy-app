@@ -4,12 +4,12 @@ S.epType = "Migraine"; S.epEdit = null;
 const DX = ["SOPK", "Pré-diabète", "Endométriose", "Fibromyalgie / fatigue chronique", "Migraines", "Asthme", "Allergies", "Dépression / anxiété", "Troubles du sommeil", "TSA", "TDAH", "SPT"];
 const DX_DEFAUT = ["SOPK", "Pré-diabète", "Endométriose", "Fibromyalgie / fatigue chronique", "Migraines", "Asthme", "Allergies", "Dépression / anxiété", "Troubles du sommeil"];
 const EP = {
-  "Migraine": { ic: "🤕", d: ["Stress", "Manque de sommeil", "Règles / hormones", "Lumière / écrans", "Bruit", "Odeurs", "Repas sauté", "Alcool", "Chaleur", "Météo"], s: ["Aura", "Nausées", "Vomissements", "Sensible à la lumière", "Sensible au bruit"], a: ["Repos dans le noir", "Médicament", "Froid sur le front", "Dormir", "Boire de l'eau", "TENS", "Tapis de lotus"] },
-  "Douleur d'endométriose": { ic: "🌸", d: ["Règles", "Rapports", "Selles", "Urines", "Effort", "Fatigue", "Stress"], s: ["Douleur pelvienne", "Bas du dos", "Ballonnements", "Nausées", "Douleur à l'épaule"], a: ["Bouillotte", "Médicament", "Repos", "Bain chaud", "Mouvement doux", "TENS", "Tapis de lotus"] },
-  "Flambée de fibromyalgie / fatigue": { ic: "🔋", d: ["Effort trop long", "Stress", "Mauvaise nuit", "Froid / humidité", "Règles", "Émotion forte"], s: ["Douleurs diffuses", "Raideur", "Brouillard mental", "Épuisement", "Hypersensibilité"], a: ["Repos", "Chaleur", "Mouvement doux", "Faire une pause", "Médicament", "TENS", "Tapis de lotus"] },
-  "Asthme / allergie": { ic: "🌬️", d: ["Pollen", "Acariens", "Animaux", "Effort", "Froid", "Fumée", "Infection", "Stress"], s: ["Toux", "Sifflements", "Essoufflement", "Nez qui coule", "Yeux qui piquent", "Éruption sur la peau"], a: ["Bronchodilatateur (Ventoline…)", "Antihistaminique", "Sortir / aérer", "Repos"] },
-  "Crise d'anxiété / moral bas": { ic: "💭", d: ["Stress", "Manque de sommeil", "Hormones / règles", "Isolement", "Pensées négatives", "Surcharge", "Santé / résultats"], s: ["Cœur qui bat vite", "Oppression", "Boule au ventre", "Pleurs", "Pensées noires", "Envie de tout arrêter"], a: ["Respirer lentement", "Parler à quelqu'un", "Marcher", "Musique", "Médicament", "Repos", "TENS", "Tapis de lotus"] },
-  "Nuit difficile": { ic: "🌙", d: ["Stress", "Écrans", "Douleur", "Caféine", "Règles", "Chaleur", "Bruit"], s: ["Endormissement long", "Réveils la nuit", "Réveil trop tôt", "Ronflements / apnée", "Cauchemars", "Jambes agitées"], a: ["Routine du soir", "Lecture", "Médicament", "Tisane", "Respiration", "TENS", "Tapis de lotus"] },
+  "Migraine": { ic: "🤕", d: ["Stress", "Manque de sommeil", "Règles / hormones", "Lumière / écrans", "Bruit", "Odeurs", "Repas sauté", "Alcool", "Chaleur", "Météo", "Je ne sais pas"], s: ["Aura", "Nausées", "Vomissements", "Sensible à la lumière", "Sensible au bruit"], a: ["Repos dans le noir", "Médicament", "Froid sur le front", "Dormir", "Boire de l'eau", "TENS", "Tapis de lotus"] },
+  "Douleur d'endométriose": { ic: "🌸", d: ["Règles", "Rapports", "Selles", "Urines", "Effort", "Fatigue", "Stress", "Je ne sais pas"], s: ["Douleur pelvienne", "Bas du dos", "Ballonnements", "Nausées", "Douleur à l'épaule"], a: ["Bouillotte", "Médicament", "Repos", "Bain chaud", "Mouvement doux", "TENS", "Tapis de lotus"] },
+  "Flambée de fibromyalgie / fatigue": { ic: "🔋", d: ["Effort trop long", "Stress", "Mauvaise nuit", "Froid / humidité", "Règles", "Émotion forte", "Je ne sais pas"], s: ["Douleurs diffuses", "Raideur", "Brouillard mental", "Épuisement", "Hypersensibilité"], a: ["Repos", "Chaleur", "Mouvement doux", "Faire une pause", "Médicament", "TENS", "Tapis de lotus"] },
+  "Asthme / allergie": { ic: "🌬️", d: ["Pollen", "Acariens", "Animaux", "Effort", "Froid", "Fumée", "Infection", "Stress", "Je ne sais pas"], s: ["Toux", "Sifflements", "Essoufflement", "Nez qui coule", "Yeux qui piquent", "Éruption sur la peau"], a: ["Bronchodilatateur (Ventoline…)", "Antihistaminique", "Sortir / aérer", "Repos"] },
+  "Crise d'anxiété / moral bas": { ic: "💭", d: ["Stress", "Manque de sommeil", "Hormones / règles", "Isolement", "Pensées négatives", "Surcharge", "Santé / résultats", "Je ne sais pas"], s: ["Cœur qui bat vite", "Oppression", "Boule au ventre", "Pleurs", "Pensées noires", "Envie de tout arrêter"], a: ["Respirer lentement", "Parler à quelqu'un", "Marcher", "Musique", "Médicament", "Repos", "TENS", "Tapis de lotus"] },
+  "Nuit difficile": { ic: "🌙", d: ["Stress", "Écrans", "Douleur", "Caféine", "Règles", "Chaleur", "Bruit", "Je ne sais pas"], s: ["Endormissement long", "Réveils la nuit", "Réveil trop tôt", "Ronflements / apnée", "Cauchemars", "Jambes agitées"], a: ["Routine du soir", "Lecture", "Médicament", "Tisane", "Respiration", "TENS", "Tapis de lotus"] },
 };
 const EP_DUREES = ["Moins d'1 heure", "1 à 4 heures", "4 à 24 heures", "Plus d'une journée", "Plusieurs jours"];
 const dxSaved = () => { const c = cfg(24); return [...(c.dx || []), ...(c.autre ? String(c.autre).split(",").map((x) => x.trim()).filter(Boolean) : [])]; };
@@ -60,13 +60,14 @@ function renderSante() {
   <p><b>Symptômes</b></p>${chipsP("eps", T.s, ed && ed.type === type ? ed.s || [] : [])}
   <p><b>Ce qui l'a déclenché ou aggravé</b></p>${chipsP("epd", T.d, ed && ed.type === type ? ed.d || [] : [])}
   <p><b>Ce qui m'a aidée</b></p>${chipsP("epa", T.a, ed && ed.type === type ? ed.a || [] : [])}
+  ${field("epAct", "🕐 Ce que je faisais à ce moment-là", "text", ed ? ed.act || "" : "")}
   ${field("epNote", "Note (médicament pris, dose, remarque…)", "text", ed ? ed.note || "" : "")}
   ${btn(ed ? "💾 Enregistrer la modification" : "💾 Enregistrer", "epsave")}${ed ? btn("Annuler", "epcancel", "sec") : ""}`;
   if (type === "Crise d'anxiété / moral bas") h += box("info", "💛 Si tu as des pensées de te faire du mal : appelle le <b>3114</b> (gratuit, 24 h/24, 7 j/7) ou le <b>15</b>. Tu n'as pas à rester seule avec ça.");
   h += `<hr><h3>🔎 Ce que je remarque (3 derniers mois)</h3>${epInsights()}`;
   const L = epTri(epListe());
   if (L.length) h += fold(`📖 Mes crises notées (${L.length})`, L.slice(0, 40).map((x) => `<div class="jn"><div class="jnh"><b>${fr(x.date)}</b> ${esc(x.heure || "")} <span class="tag">${EP[x.type] ? EP[x.type].ic : ""} ${esc(x.type)}</span><span class="jnb">${btn("✏️", "epedit", "", `data-id="${x.id}" title="Modifier"`)}${btn("🗑️", "epdel", "del", `data-id="${x.id}" title="Supprimer"`)}</span></div>
-    <div>Intensité <b>${esc(x.i)}/10</b> · ${esc(x.duree || "")}</div>${(x.s || []).length ? `<div>${esc(x.s.join(", "))}</div>` : ""}${(x.d || []).length ? `<div class="muted">Déclencheurs : ${esc(x.d.join(", "))}</div>` : ""}${(x.a || []).length ? `<div class="muted">Ce qui a aidé : ${esc(x.a.join(", "))}</div>` : ""}${x.note ? `<div class="muted">📝 ${esc(x.note)}</div>` : ""}</div>`).join("") + (L.length > 40 ? `<p class="muted">Les 40 plus récentes sont affichées.</p>` : ""));
+    <div>Intensité <b>${esc(x.i)}/10</b> · ${esc(x.duree || "")}</div>${(x.s || []).length ? `<div>${esc(x.s.join(", "))}</div>` : ""}${(x.d || []).length ? `<div class="muted">Déclencheurs : ${esc(x.d.join(", "))}</div>` : ""}${(x.a || []).length ? `<div class="muted">Ce qui a aidé : ${esc(x.a.join(", "))}</div>` : ""}${x.act ? `<div class="muted">🕐 Je faisais : ${esc(x.act)}</div>` : ""}${x.note ? `<div class="muted">📝 ${esc(x.note)}</div>` : ""}</div>`).join("") + (L.length > 40 ? `<p class="muted">Les 40 plus récentes sont affichées.</p>` : ""));
   return h;
 }
 
@@ -75,7 +76,7 @@ Object.assign(ACT_NEW, {
     if (await saveCfg(24, { dx: picked("dx"), autre: val("dxAutre").trim() })) { toast("📋 Diagnostics enregistrés"); render(); }
   },
   async epsave() {
-    const type = val("epType"), e = { date: dval("epDate") || today(), heure: val("epHeure"), type, i: val("epInt"), duree: val("epDuree"), s: picked("eps"), d: picked("epd"), a: picked("epa"), note: val("epNote").trim() };
+    const type = val("epType"), e = { date: dval("epDate") || today(), heure: val("epHeure"), type, i: val("epInt"), duree: val("epDuree"), s: picked("eps"), d: picked("epd"), a: picked("epa"), act: val("epAct").trim(), note: val("epNote").trim() };
     const L = epListe(), out = S.epEdit ? L.map((x) => String(x.id) === String(S.epEdit) ? { ...x, ...e } : x) : [...L, { id: Date.now(), ...e }];
     if (await saveCfg(25, { ep: out })) {
       S.epEdit = null; DIRTY.clear();
