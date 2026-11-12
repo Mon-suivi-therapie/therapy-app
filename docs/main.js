@@ -7,6 +7,7 @@ const NAV = [
   ["health", "🥗 Suivi Glycémie & Nutrition", renderHealth, afterHealth],
   ["df", "🧘 Douleur & Énergie", renderDouleur, afterDouleur],
   ["journal", "📝 Mon journal", renderJournal, null],
+  ["sante", "🩹 Mes maladies", renderSante, null],
   ["tsa", "🧩 TSA", () => renderTrouble("TSA"), () => afterTrouble("TSA")],
   ["tdah", "⚡ TDAH", () => renderTrouble("TDAH"), () => afterTrouble("TDAH")],
   ["spt", "🌿 SPT", () => renderTrouble("SPT"), () => afterTrouble("SPT")],

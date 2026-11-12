@@ -2,6 +2,7 @@
 function lignesFiche(vals) {
   const une = (t) => String(t || "").split("\n").map((x) => x.trim()).filter(Boolean).join(" / ");
   const t = today(), fiche = [], infos = [];
+  const dxs = dxSaved(); if (dxs.length) infos.push("Pathologies suivies : " + dxs.join(", "));
   if (vals.diag.trim()) infos.push("Diagnostics et antécédents : " + une(vals.diag));
   if (vals.allerg.trim()) infos.push("Allergies / intolérances : " + une(vals.allerg));
   if (vals.besoins.trim()) infos.push("Mes besoins pour la consultation : " + une(vals.besoins));
@@ -55,6 +56,8 @@ function lignesFiche(vals) {
     if (r14.length) ln.push(`Sur 14 jours : ${r14.length} mesure(s), moyenne ${r1(avg(r14.map((r) => r.s)) / 10)}/${r1(avg(r14.map((r) => r.d)) / 10)}, maximum ${Math.max(...r14.map((r) => r.s)) / 10}/${Math.max(...r14.map((r) => r.d)) / 10}${r14.filter((r) => r.s >= 140 || r.d >= 90).length ? `, dont ${r14.filter((r) => r.s >= 140 || r.d >= 90).length} à 14/9 ou plus` : ""}`);
     fiche.push(["🩺 Tension", ln]);
   }
+
+  const ep = epFicheLignes(); if (ep.length) fiche.push(["🩹 Crises et épisodes (30 derniers jours)", ep]);
 
   const lr = rows("rdv_medicaux").filter((r) => r.Date >= t && r.Statut !== "✅ Effectué").sort((a, c) => a.Date.localeCompare(c.Date)).slice(0, 5).map((r) => `${fr2(r.Date)} : ${r["Médecin / Spécialité"] || ""}`);
   const ap = rows("rdv_a_prendre").filter((r) => r.Statut !== "Fait").map((r) => r["Spécialité"]);
