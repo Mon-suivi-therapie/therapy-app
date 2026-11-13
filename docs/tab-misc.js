@@ -57,6 +57,7 @@ function lignesFiche(vals) {
     fiche.push(["🩺 Tension", ln]);
   }
 
+  const apn = ppcFicheLignes(); if (apn.length) fiche.push(["😴 Appareil pour l'apnée du sommeil", apn]);
   const ep = epFicheLignes(); if (ep.length) fiche.push(["🩹 Crises et épisodes (30 derniers jours)", ep]);
 
   const lr = rows("rdv_medicaux").filter((r) => r.Date >= t && r.Statut !== "✅ Effectué").sort((a, c) => a.Date.localeCompare(c.Date)).slice(0, 5).map((r) => `${fr2(r.Date)} : ${r["Médecin / Spécialité"] || ""}`);

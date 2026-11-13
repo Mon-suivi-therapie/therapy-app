@@ -29,6 +29,7 @@ function renderToday() {
   if (S.set.parcours === PARCOURS[1]) items.push([tnTous().some((r) => r.date === t), "Tension du jour", "cycle"]);
   items.push([rows("suivi_douleur_fatigue").some((r) => r.Date === t), "Douleur, fatigue et sommeil", "df"]);
   items.push([!!humeurs()[t], "Mon humeur du jour", "df"]);
+  items.push([!!ppcNuits()[t], "Appareil d'apnée du sommeil : l'ai-je utilisé cette nuit ?", "today"]);
   const qj = QJ()[t] || null;
   items.push([!!(qj && (qj.eau || qj.pas || (qj.repas || []).length || (qj.min))), "Mon quotidien (repas, eau, activité" + (qj && qj.pas ? ", " + qj.pas + " pas" : ", pas") + ")", "health"]);
   if (rows("suivi_neuro").some((r) => r.Date >= addDays(t, -14))) items.push([rows("suivi_neuro").some((r) => r.Date === t), "Check-in TDAH / TSA / SPT du jour", "tdah"]);
@@ -38,7 +39,7 @@ function renderToday() {
 
   let h = `<h2>☀️ Aujourd'hui</h2><p class="muted" style="text-transform:capitalize">${esc(jour)}</p>${stockAlertes()}`;
   h += `${bar(faits / items.length)}<p class="muted">${faits} chose(s) faite(s) sur ${items.length}</p>`;
-  h += items.map(([ok, txt, tab]) => `<div class="todo ${ok ? "ok" : ""}"><span>${ok ? "✅" : "⬜"}</span><div>${txt}</div>${ok ? "" : btn("Ouvrir", "goto", "sec", `data-t="${tab}"`)}</div>`).join("");
+  h += items.map(([ok, txt, tab]) => `<div class="todo ${ok ? "ok" : ""}"><span>${ok ? "✅" : "⬜"}</span><div>${txt}</div>${ok || tab === "today" ? "" : btn("Ouvrir", "goto", "sec", `data-t="${tab}"`)}</div>`).join("");
   if (nbM) h += `<p>${btn("✅ J'ai tout pris comme d'habitude (un clic)", "todayall")}</p>`;
   else if (total && faits === items.length) h += box("ok", "🌿 Tout est fait pour aujourd'hui. Tu peux te reposer.");
 
@@ -54,7 +55,7 @@ function renderToday() {
   const ap = rows("rdv_a_prendre").filter((r) => r.Statut === "À appeler").length;
   if (ap) h += `<div class="todo"><span>📞</span><div>${ap} rendez-vous à prendre</div>${btn("Ouvrir", "goto", "sec", 'data-t="rdv"')}</div>`;
 
-  h += "<hr>" + fold("❓ Mes questions pour le médecin" + (nbq ? ` (${nbq})` : ""), questionsRapides(false), nbq > 0 && rdv.some((r) => diffDays(r.Date, t) <= 3));
+  h += "<hr>" + ppcBlock(t) + "<hr>" + fold("❓ Mes questions pour le médecin" + (nbq ? ` (${nbq})` : ""), questionsRapides(false), nbq > 0 && rdv.some((r) => diffDays(r.Date, t) <= 3));
   h += `<p class="muted">Besoin d'écrire autre chose ? Va dans <b>📝 Mon journal</b>.</p>`;
   return h;
 }

@@ -85,7 +85,7 @@ function renderDash() {
   } else h += liste;
 
   if (Object.keys(manq).length) h += `<p>${btn("✅ J'ai tout pris comme d'habitude (enregistrer en un clic)", "toutpris")}</p>`;
-  h += "<hr>";
+  h += "<hr>" + ppcBlock(date) + "<hr>";
 
   if (S.set.difficile) {
     h += box("info", "🌧️ Mode jour difficile : seulement l'essentiel. Fais juste ce qui est listé ci-dessus. Tu pourras compléter le reste plus tard (tu peux revenir sur un jour passé avec le choix de date).");
