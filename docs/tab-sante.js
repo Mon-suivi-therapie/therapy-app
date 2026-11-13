@@ -182,7 +182,7 @@ function symptomesBlock() {
   ${SY_GROUPES.map(([g, L]) => `<p><b>${g}</b></p>${chipsP("sy", L, on)}`).join("")}
   ${field("syAutre", "Autre symptôme (écris-le)", "text", x.autre || "")}
   ${sel("syForce", "Intensité globale", SY_FORCE, x.force || "Léger")}
-  ${btn("💾 Enregistrer mes symptômes", "sysave")}${x.s || x.autre ? btn("🗑️ Effacer ce jour", "sydel", "del") : ""}`;
+  ${btn("💾 Enregistrer mes symptômes", "sysave")}${x.s || x.autre ? btn("🗑️ Effacer ce jour", "sydel", "del") : ""}<div id="syAdvice">${syConseils(on, x.force)}</div>`;
   const J = syJours(), recent = Object.keys(J).filter((k) => k >= addDays(t, -30)).sort().reverse();
   if (recent.length) {
     const c = {}; recent.forEach((k) => (J[k].s || []).forEach((v) => (c[v] = (c[v] || 0) + 1)));
@@ -214,4 +214,59 @@ Object.assign(ACT_NEW, {
 });
 Object.assign(CHG_NEW, {
   syDate(el) { S.syDate = !el.value || el.value > today() ? today() : el.value; [...DIRTY].filter((k) => k.startsWith("n:sy=") || k === "#syAutre" || k === "#syForce").forEach((k) => DIRTY.delete(k)); render(); },
+});
+
+
+// ===== conseils après les symptômes (généraux, pas un diagnostic) =====
+// c = conseil, r = quand consulter / appeler
+const SY_AVIS = {
+  "Diarrhée": { c: "Bois souvent par petites gorgées (eau, bouillon, solution de réhydratation) et mange simple : riz, carottes, banane, pâtes. Évite alcool, café, lait et plats gras. Lave-toi les mains souvent.", r: "Consulte si elle dure plus de 2 jours, s'il y a du sang, de la fièvre, ou si tu n'arrives pas à boire." },
+  "Constipation": { c: "Bois plus d'eau, mange des fibres (légumes, fruits, céréales complètes) et marche un peu : le mouvement aide l'intestin." },
+  "Nausées": { c: "Mange peu et souvent, évite les odeurs fortes et le gras. Le gingembre ou une boisson fraîche peuvent aider.", r: "Si tes règles ont du retard et que tu peux être enceinte, fais un test de grossesse." },
+  "Vomissements": { c: "Attends un peu, puis bois par très petites gorgées. Reprends l'alimentation doucement.", r: "Consulte si tu vomis plus de 24 h, s'il y a du sang, de la fièvre, ou si tu ne gardes même pas l'eau." },
+  "Ballonnements": { c: "Mange lentement, évite les boissons gazeuses et le chewing-gum. Une bouillotte sur le ventre et une courte marche soulagent souvent." },
+  "Reflux / brûlures d'estomac": { c: "Évite les repas tardifs, gras ou épicés. Lève un peu la tête du lit et ne t'allonge pas juste après manger." },
+  "Mal au ventre": { c: "Repos et chaleur (bouillotte). Note où est la douleur.", r: "Consulte vite si elle est forte, d'un seul côté, ou avec fièvre, vomissements ou retard de règles." },
+  "Nez bouché": { c: "Lave-toi le nez au sérum physiologique, bois chaud, humidifie la pièce. Un nez bouché gêne le masque d'apnée : active l'humidificateur de l'appareil et dis-le à ton prestataire si ça dure. Si tu essaies d'être enceinte, demande à ton pharmacien avant tout décongestionnant." },
+  "Nez qui coule": { c: "Sérum physiologique, mouchoirs jetables, boissons chaudes. Si tu essaies d'être enceinte, demande l'avis d'un pharmacien avant un médicament." },
+  "Éternuements": { c: "Si c'est une allergie : aère, évite la poussière et les pollens, lave-toi le visage et les cheveux le soir. Prends ton antihistaminique s'il t'a été prescrit." },
+  "Mal de gorge": { c: "Bois chaud (tisane, miel), repose ta voix, humidifie l'air.", r: "Consulte si ça dure plus de 3 jours, avec fièvre, ou si tu as du mal à avaler." },
+  "Toux": { c: "Bois régulièrement, miel, humidifie l'air. Si tu as de l'asthme, prends ton traitement selon ton plan.", r: "Consulte si elle dure plus de 3 semaines, ou avec fièvre ou essoufflement." },
+  "Essoufflement": { c: "Assieds-toi, respire lentement. Si tu as de l'asthme, prends ton bronchodilatateur.", r: "Appelle le 15 si ça ne passe pas au repos, si tu as une douleur dans la poitrine, ou si tu n'arrives plus à parler." },
+  "Yeux qui piquent": { c: "Rince-toi les yeux à l'eau claire ou au sérum, ne frotte pas. Si c'est une allergie, aère et lave-toi le visage." },
+  "Fièvre": { c: "Repose-toi et bois beaucoup. Le paracétamol (à la dose indiquée sur la boîte) peut soulager.", r: "Consulte si elle dépasse 39 °C, dure plus de 3 jours ou s'accompagne de raideur de la nuque ou de difficultés à respirer. Si tu peux être enceinte, demande un avis médical." },
+  "Frissons": { c: "Couvre-toi légèrement, bois chaud et repose-toi. Prends ta température." },
+  "Courbatures": { c: "Repos, eau, chaleur sur les zones douloureuses. Évite l'effort intense pendant quelques jours." },
+  "Fatigue inhabituelle": { c: "Dors et mange régulièrement. Vérifie que tu as bien porté ton appareil d'apnée. Pense à boire. Surveille ta glycémie si ton médecin te l'a demandé.", r: "Si elle dure plus de 2 semaines, parles-en à ton médecin (fer, thyroïde, vitamine D, sommeil)." },
+  "Vertiges": { c: "Assieds-toi ou allonge-toi, bois et mange quelque chose. Lève-toi lentement. Si tu suis ta glycémie, mesure-la.", r: "Appelle le 15 en cas de malaise, de perte de connaissance, de difficulté à parler ou de faiblesse d'un côté." },
+  "Maux de tête": { c: "Bois, repose-toi au calme, dans le noir si c'est une migraine. Un linge frais sur le front peut aider. Note-le dans « Mes maladies » pour repérer les déclencheurs.", r: "Appelle le 15 si le mal de tête est brutal et très violent, ou avec raideur de la nuque, fièvre ou troubles de la vue." },
+  "Palpitations": { c: "Assieds-toi, respire lentement (inspire 4 secondes, expire 6). Évite caféine et excitants.", r: "Appelle le 15 si tu as une douleur dans la poitrine, un malaise ou un essoufflement." },
+  "Sueurs / bouffées de chaleur": { c: "Porte des vêtements légers, bois frais. Note l'heure et le contexte.", r: "Si c'est nouveau ou fréquent, parles-en à ton médecin (thyroïde, glycémie, hormones)." },
+  "Éruption / boutons": { c: "Ne gratte pas, lave doucement et applique une crème apaisante. Note ce que tu as mangé, pris ou touché.", r: "Va aux urgences si le visage ou les lèvres gonflent, ou si tu as du mal à respirer." },
+  "Démangeaisons": { c: "Évite de gratter, prends une douche tiède, applique une crème hydratante." },
+  "Poussée d'acné": { c: "Nettoie doucement matin et soir, ne presse pas les boutons. L'acné est fréquente avec le SOPK : note-la dans ton suivi SOPK." },
+  "Brûlures en urinant": { c: "Bois beaucoup d'eau et ne retiens pas tes envies d'uriner.", r: "Possible infection urinaire : consulte dans la journée ou le lendemain (surtout si tu essaies d'être enceinte), et en urgence en cas de fièvre ou de douleur dans le dos." },
+  "Pertes inhabituelles": { c: "Évite les toilettes intimes agressives et les produits parfumés. Porte du coton.", r: "Consulte si elles ont une odeur, des démangeaisons, une couleur inhabituelle, ou si tu essaies d'être enceinte." },
+  "Saignements hors règles": { c: "Note la date, la quantité et la couleur. Un petit saignement peut arriver autour de l'ovulation.", r: "Consulte vite s'ils sont abondants ou répétés. Si tu peux être enceinte, fais un test et contacte ton médecin ou ton équipe PMA." },
+  "Douleur pelvienne": { c: "Chaleur sur le ventre, repos, position confortable. Note-la dans « Mes maladies » (douleur d'endométriose).", r: "Va aux urgences si elle est forte, d'un seul côté, ou avec retard de règles, saignements ou malaise." },
+  "Seins douloureux": { c: "Un soutien-gorge confortable et de la chaleur ou du froid aident. C'est fréquent avant les règles." },
+  "Anxiété": { c: "Respire lentement (inspire 4 secondes, expire 6) pendant 2 minutes, marche un peu, parle à quelqu'un. Note la crise dans « Mes maladies ».", r: "Si tu as des pensées de te faire du mal : 3114 (gratuit, 24 h/24)." },
+  "Pleurs": { c: "Tu as le droit de pleurer. Bois de l'eau, repose-toi, parle à quelqu'un de confiance.", r: "Si ce moral bas dure ou si tu as des pensées noires : 3114 (gratuit, 24 h/24) ou ton médecin." },
+  "Irritabilité": { c: "Fais une pause, un peu d'air et de l'eau. Note les jours où ça revient : un lien avec ton cycle est possible." },
+};
+function syConseils(list, force) {
+  list = (list || []).filter((v) => SY_AVIS[v]);
+  if (!list.length) return "";
+  const r = list.filter((v) => SY_AVIS[v].r).map((v) => `<li><b>${esc(v)}</b> : ${esc(SY_AVIS[v].r)}</li>`);
+  const metf = list.includes("Diarrhée") && Object.keys(S.meds).some((n) => /metformine|glucophage|stagid/i.test(n));
+  let h = `<h4>💡 Mes conseils</h4>` + list.slice(0, 8).map((v) => `<div class="todo"><span>💡</span><div><b>${esc(v)}</b> : ${esc(SY_AVIS[v].c)}</div></div>`).join("");
+  if (list.length > 8) h += `<p class="muted">Et pour les autres symptômes cochés : repos, hydratation, et surveille l'évolution.</p>`;
+  if (metf) h += box("info", "💊 La metformine peut donner de la diarrhée. Ne l'arrête pas seule : parles-en à ton médecin, il peut adapter la dose ou la forme.");
+  if (force === "Fort") h += box("warn", "⚠️ Tu as indiqué une intensité forte : si ça ne se calme pas dans la journée, contacte ton médecin.");
+  if (r.length) h += box("warn", `🩺 <b>Quand consulter ou appeler</b><ul>${r.join("")}</ul>`);
+  return h + `<p class="muted">Ces conseils sont généraux : ils ne remplacent pas l'avis d'un médecin. En cas de doute, appelle ton médecin ou le 15.</p>`;
+}
+document.addEventListener("change", (e) => {
+  const el = e.target; if (!el || !$("syAdvice")) return;
+  if (el.name === "sy" || el.id === "syForce") $("syAdvice").innerHTML = syConseils(picked("sy"), $("syForce").value);
 });
