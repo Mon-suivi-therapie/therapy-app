@@ -29,6 +29,9 @@ function renderToday() {
   if (S.set.parcours === PARCOURS[1]) items.push([tnTous().some((r) => r.date === t), "Tension du jour", "cycle"]);
   items.push([rows("suivi_douleur_fatigue").some((r) => r.Date === t), "Douleur, fatigue et sommeil", "df"]);
   items.push([!!humeurs()[t], "Mon humeur du jour", "df"]);
+  const qj = QJ()[t] || null;
+  items.push([!!(qj && (qj.eau || qj.pas || (qj.repas || []).length || (qj.min))), "Mon quotidien (repas, eau, activité" + (qj && qj.pas ? ", " + qj.pas + " pas" : ", pas") + ")", "health"]);
+  if (rows("suivi_neuro").some((r) => r.Date >= addDays(t, -14))) items.push([rows("suivi_neuro").some((r) => r.Date === t), "Check-in TDAH / TSA / SPT du jour", "tdah"]);
   const recentGly = rows("suivi_glycemie").some((r) => r.Date >= addDays(t, -14));
   if (recentGly) items.push([rows("suivi_glycemie").some((r) => r.Date === t), "Glycémie", "health"]);
   const faits = items.filter((i) => i[0]).length;
