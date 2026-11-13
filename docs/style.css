@@ -154,3 +154,11 @@ body.pfiche #main>*:not(#ficheWrap){display:none!important}
 .jnb{margin-left:auto;white-space:nowrap}
 .jnb .b{margin:0 0 0 4px;padding:4px 10px}
 .jn .tag{font-size:.78rem;padding:2px 9px;border-radius:999px;background:var(--line)}
+
+/* rubriques repliables */
+details.secfold{background:transparent;border:0;border-bottom:2px solid var(--rose-l);border-radius:0;padding:0 0 .6rem;margin:1.6rem 0 .5rem}
+details.secfold>summary{font-family:'Playfair Display',Georgia,serif;font-weight:600;font-size:1.2rem;color:var(--fg);padding:.1rem 0 .3rem;list-style:none}
+details.secfold>summary::-webkit-details-marker{display:none}
+details.secfold>summary::before{content:"▾";display:inline-block;margin-right:.5rem;color:var(--rose-d);transition:transform .15s}
+details.secfold:not([open])>summary::before{transform:rotate(-90deg)}
+@media print{details.secfold>summary::before{content:""}}

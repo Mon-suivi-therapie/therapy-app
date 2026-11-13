@@ -38,6 +38,27 @@ document.addEventListener("toggle", (e) => {
   if (d.open && charts[d.dataset.cid]) charts[d.dataset.cid].resize();
 }, true);
 
+// ----- chaque grande rubrique (titre) se replie en cliquant dessus ; l'état est mémorisé -----
+S.secClosed = (() => { try { return JSON.parse(localStorage.getItem("secClosed") || "{}"); } catch { return {}; } })();
+function wrapSections() {
+  [...document.querySelectorAll("#main h3")].forEach((h) => {
+    if (h.closest("details") || !h.parentNode) return;
+    const nodes = []; let n = h.nextSibling;
+    while (n && !(n.nodeType === 1 && /^(H2|H3|HR)$/.test(n.tagName))) { nodes.push(n); n = n.nextSibling; }
+    if (!nodes.length) return;
+    const d = document.createElement("details"); d.className = "secfold"; d.dataset.sid = S.tab + "|" + h.textContent.trim();
+    d.open = !S.secClosed[d.dataset.sid];
+    const sm = document.createElement("summary"); sm.innerHTML = h.innerHTML;
+    d.appendChild(sm); h.replaceWith(d); nodes.forEach((x) => d.appendChild(x));
+  });
+}
+document.addEventListener("toggle", (e) => {
+  const d = e.target; if (!d.dataset || !d.dataset.sid) return;
+  if (d.open) delete S.secClosed[d.dataset.sid]; else S.secClosed[d.dataset.sid] = 1;
+  try { localStorage.setItem("secClosed", JSON.stringify(S.secClosed)); } catch {}
+  if (d.open) Object.values(charts).forEach((c) => c && c.resize && c.resize());
+}, true);
+
 // ----- ce que tu as commencé à écrire dans un formulaire n'est plus perdu quand tu en enregistres un AUTRE -----
 const DIRTY = new Set(); // champs modifiés par toi et pas encore enregistrés
 const FORM_SEL = "#main input, #main select, #main textarea, #side input, #side select, #side textarea";
@@ -79,6 +100,7 @@ function render() {
   try { html += cur[2](); } catch (e) { console.error(e); html += box("err", "Erreur d'affichage : " + esc(e.message)); }
   $("main").innerHTML = html;
   wrapCharts();
+  wrapSections();
   try { cur[3] && cur[3](); } catch (e) { console.error(e); }
   window.scrollTo(0, y);
   renderSide();
