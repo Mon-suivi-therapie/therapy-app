@@ -229,7 +229,7 @@ function quotidienBlock() {
   const L = [cmp("Jours avec boisson sucrée ou grignotage sucré, glycémie après repas", (z) => (z.repas || []).some((r) => /sucré/.test(r))), cmp("Jours avec 30 min d'activité ou plus", (z) => (num(z.min) || 0) >= 30), cmp("Jours avec 5 000 pas ou plus", (z) => (num(z.pas) || 0) >= 5000), cmp("Jours où tu as mangé les légumes en premier", (z) => (z.repas || []).some((r) => /Légumes/.test(r)))].filter(Boolean);
   h += dates.length ? (L.length ? `<h4>🔎 Ce que montrent tes jours</h4><ul>${L.join("")}</ul><p class="muted">Ce sont des tendances sur peu de jours, pas des preuves.</p>` : `<p class="muted">Dès que tu auras noté au moins 3 jours de chaque sorte avec une glycémie après repas, le site les comparera ici.</p>`) : "";
   if (dates.length) h += fold(`📋 Mes derniers jours (${dates.length})`, `<div class="tw"><table><thead><tr><th>Date</th><th>Repas</th><th>Eau</th><th>Activité</th><th>Pas</th><th></th></tr></thead><tbody>${dates.slice(0, 14).map((dt) => `<tr><td>${fr(dt)}</td><td>${esc((J[dt].repas || []).join(" · "))}</td><td>${J[dt].eau ?? ""}</td><td>${esc((J[dt].act || "") + (J[dt].min ? " " + J[dt].min + " min" : ""))}</td><td>${J[dt].pas ?? ""}</td><td><button class="b del" data-act="delq" data-d="${dt}" title="Supprimer">🗑️</button></td></tr>`).join("")}</tbody></table></div>`);
-  return h + "<hr>";
+  return h + glyPasBlock() + "<hr>";
 }
 // phrase en direct pendant que tu écris le nombre de pas
 document.addEventListener("input", (e) => {

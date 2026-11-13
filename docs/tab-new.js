@@ -33,8 +33,11 @@ function renderToday() {
   const qj = QJ()[t] || null;
   items.push([!!(qj && (qj.eau || qj.pas || (qj.repas || []).length || (qj.min))), "Mon quotidien (repas, eau, activité" + (qj && qj.pas ? ", " + qj.pas + " pas" : ", pas") + ")", "health"]);
   if (rows("suivi_neuro").some((r) => r.Date >= addDays(t, -14))) items.push([rows("suivi_neuro").some((r) => r.Date === t), "Check-in TDAH / TSA / SPT du jour", "tdah"]);
-  const recentGly = rows("suivi_glycemie").some((r) => r.Date >= addDays(t, -14));
-  if (recentGly) items.push([rows("suivi_glycemie").some((r) => r.Date === t), "Glycémie", "health"]);
+  const wd = parseD(t).getUTCDay(); // 1 lundi … 6 samedi
+  if (GP_JOURS.includes(wd)) {
+    const debut = wd <= 2 ? addDays(t, -(wd - 1)) : addDays(t, -(wd - 5)); // lundi ou vendredi de cette période
+    items.push([rows("suivi_glycemie").some((r) => r.Date >= debut && r.Date <= t), wd <= 2 ? "Glycémie à jeun (jour de mesure du début de semaine)" : "Glycémie après repas (jour de mesure de fin de semaine)", "health"]);
+  }
   const faits = items.filter((i) => i[0]).length;
 
   let h = `<h2>☀️ Aujourd'hui</h2><p class="muted" style="text-transform:capitalize">${esc(jour)}</p>${stockAlertes()}`;
@@ -174,3 +177,49 @@ const CHG_NEW = {
   jnQ(el) { S.jnQ = el.value; keepRender(); },
   exType(el) { S.exType = el.value; [...DIRTY].filter((k) => k.startsWith("#ex_")).forEach((k) => DIRTY.delete(k)); keepRender(); },
 };
+
+// ---------- 🔗 lien entre la glycémie et les pas ----------
+// Tu mesures 2 fois par semaine (lundi ou mardi : à jeun ; vendredi ou samedi : après repas) : on compare chaque mesure
+// avec les pas de la veille (la glycémie à jeun reflète la veille) et du jour même (après repas).
+const GP_JOURS = [1, 2, 5, 6]; // lundi, mardi, vendredi, samedi
+const gpPas = (d) => { const x = QJ()[d]; const p = x ? num(x.pas) : null; return p === null || p === undefined || isNaN(p) ? null : p; };
+function gpMesures() {
+  const out = [];
+  rows("suivi_glycemie").forEach((r) => {
+    const a = gv(r["Glycémie à jeun"]), b = gv(r["Glycémie Post-Prandiale"]);
+    const prev3 = [1, 2, 3].map((k) => gpPas(addDays(r.Date, -k))).filter((v) => v !== null);
+    const base = { date: r.Date, veille: gpPas(addDays(r.Date, -1)), jour: gpPas(r.Date), moy3: prev3.length ? avg(prev3) : null };
+    if (a !== null) out.push({ ...base, type: "À jeun", g: a, ref: base.veille });
+    if (b !== null) out.push({ ...base, type: "Après repas", g: b, ref: base.jour !== null ? base.jour : base.veille });
+  });
+  return out.sort((x, y) => y.date.localeCompare(x.date));
+}
+function gpCorr(L) {
+  if (L.length < 5) return null;
+  const mx = avg(L.map((x) => x.ref)), my = avg(L.map((x) => x.g));
+  const sxy = L.reduce((s, x) => s + (x.ref - mx) * (x.g - my), 0), sx = Math.sqrt(L.reduce((s, x) => s + (x.ref - mx) ** 2, 0)), sy = Math.sqrt(L.reduce((s, x) => s + (x.g - my) ** 2, 0));
+  return sx && sy ? sxy / (sx * sy) : null;
+}
+function glyPasBlock() {
+  const M = gpMesures(), obj = pasObjectif(), fmt = (n) => Math.round(n).toLocaleString("fr-FR");
+  let h = `<h4>🔗 Lien entre ma glycémie et mes pas</h4><p class="muted">Tu mesures ta glycémie 2 fois par semaine (lundi ou mardi à jeun, vendredi ou samedi après un repas). Le site compare chaque mesure avec tes pas : ceux de la <b>veille</b> pour la glycémie à jeun, ceux du <b>jour même</b> pour celle après un repas. <b>Note tes pas aussi la veille des jours de mesure.</b></p>`;
+  if (!M.length) return h + `<p class="muted">Dès que tu as noté des glycémies, elles apparaissent ici avec tes pas.</p>`;
+  const avec = M.filter((x) => x.ref !== null), sans = M.length - avec.length;
+  if (sans) h += `<p class="muted">📝 ${sans} mesure(s) sans nombre de pas noté pour la période concernée : elles ne sont pas comparées.</p>`;
+  const bloc = (type, titre, quand) => {
+    const L = avec.filter((x) => x.type === type); if (!L.length) return "";
+    const haut = L.filter((x) => x.ref >= obj), bas = L.filter((x) => x.ref < obj);
+    let s = `<p><b>${titre}</b> (${L.length} mesure(s) avec pas)</p>`;
+    if (haut.length >= 2 && bas.length >= 2) {
+      const a = avg(haut.map((x) => x.g)), b = avg(bas.map((x) => x.g)), d = b - a;
+      s += `<ul><li>${quand} ≥ ${fmt(obj)} pas : <b>${r1(a, 2)} g/L</b> en moyenne (${haut.length} mesures)</li><li>${quand} < ${fmt(obj)} pas : <b>${r1(b, 2)} g/L</b> en moyenne (${bas.length} mesures)</li></ul>`;
+      s += Math.abs(d) < 0.03 ? `<p>➡️ Pas de grande différence pour l'instant.</p>` : d > 0 ? `<p>👍 Les jours où tu marches plus, ta glycémie est <b>plus basse de ${r1(d, 2)} g/L</b> en moyenne. Continue comme ça.</p>` : `<p>🤔 Ta glycémie est un peu plus haute quand tu marches plus (${r1(-d, 2)} g/L) : ça peut venir du repas ou du moment de la mesure. Ça reste une tendance sur peu de mesures.</p>`;
+    } else s += `<p class="muted">Il faut au moins 2 mesures à ${fmt(obj)} pas ou plus et 2 en dessous pour comparer (là : ${haut.length} et ${bas.length}).</p>`;
+    const r = gpCorr(L);
+    if (r !== null && Math.abs(r) >= 0.4) s += `<p class="muted">${r < 0 ? "📉 Plus tu marches, plus ta glycémie a tendance à être basse" : "📈 Plus tu marches, plus ta glycémie a tendance à être haute"} (lien ${Math.abs(r) >= 0.7 ? "net" : "modéré"} sur ${L.length} mesures).</p>`;
+    return s;
+  };
+  h += bloc("À jeun", "🌅 Glycémie à jeun et pas de la veille", "Veille à") + bloc("Après repas", "🍽️ Glycémie après repas et pas du jour", "Jour à");
+  h += `<div class="tw"><table><thead><tr><th>Date</th><th>Mesure</th><th>Glycémie (g/L)</th><th>Pas la veille</th><th>Pas ce jour</th><th>Moyenne des 3 jours avant</th></tr></thead><tbody>${M.slice(0, 10).map((x) => `<tr><td>${fr(x.date)}</td><td>${x.type}</td><td>${r1(x.g, 2)}</td><td>${x.veille !== null ? fmt(x.veille) : "—"}</td><td>${x.jour !== null ? fmt(x.jour) : "—"}</td><td>${x.moy3 !== null ? fmt(x.moy3) : "—"}</td></tr>`).join("")}</tbody></table></div><p class="muted">Ce sont des tendances sur peu de mesures, pas des preuves : la glycémie dépend aussi de ce que tu manges, du stress et du sommeil.</p>`;
+  return h;
+}
