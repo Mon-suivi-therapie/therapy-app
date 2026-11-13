@@ -195,6 +195,24 @@ Object.assign(ACT_CYCLE, {
 const QJ = () => cfg(18).jours || {};
 const Q_REPAS = ["🥦 Légumes en premier", "🍗 Protéines à chaque repas", "🌾 Féculents complets", "🥤 Boisson sucrée", "🍪 Grignotage sucré", "⏭️ Repas sauté"];
 const Q_ACT = ["Aucune", "Marche", "Sport", "Ménage / jardin", "Autre"];
+const PAS_OBJ_DEF = 5000;
+const pasObjectif = () => num(cfg(18).objectif) || PAS_OBJ_DEF;
+function pasMessage(d) {
+  const J = QJ(), x = J[d]; if (!x || x.pas === null || x.pas === undefined || x.pas === "") return "";
+  const p = num(x.pas), o = pasObjectif(), r = p / o, fmt = (n) => Math.round(n).toLocaleString("fr-FR");
+  const mal = epListe().some((e) => e.date === d && /genou|fibromyalgie/i.test(e.type));
+  let m;
+  if (r >= 1.5) m = ["ok", `🎉 <b>${fmt(p)} pas</b> : tu as dépassé ton objectif de ${fmt(o)} pas, bravo ! Pense à te reposer et à boire de l'eau.`];
+  else if (r >= 1) m = ["ok", `🎉 <b>${fmt(p)} pas</b> : objectif de ${fmt(o)} pas atteint, bravo !`];
+  else if (r >= 0.75) m = ["info", `👏 <b>${fmt(p)} pas</b> : presque ! Il en reste ${fmt(o - p)} pour ton objectif de ${fmt(o)}. Une petite marche de 10 minutes suffirait.`];
+  else if (r >= 0.4) m = ["info", `🙂 <b>${fmt(p)} pas</b> : c'est un bon début (${Math.round(r * 100)} % de ton objectif de ${fmt(o)}). Chaque pas compte, surtout les jours de fatigue.`];
+  else m = ["warn", `🌿 <b>${fmt(p)} pas</b> : journée calme (${Math.round(r * 100)} % de ton objectif de ${fmt(o)}). Ce n'est pas grave : se reposer fait aussi partie du soin. Demain, vise juste un peu plus.`];
+  let h = box(m[0], m[1]);
+  if (mal && r < 1) h += box("info", "🦵 Tu as noté une douleur ce jour-là (genou ou fibromyalgie) : ménage-toi, un objectif non atteint un jour comme celui-là est normal.");
+  const sem = [...Array(7)].map((_, i) => addDays(d, -i)).map((dt) => J[dt] && num(J[dt].pas)).filter((v) => v !== null && v !== undefined);
+  if (sem.length >= 3) h += `<p class="muted">📊 Sur les 7 derniers jours : moyenne <b>${fmt(avg(sem))} pas</b> par jour, objectif atteint ${sem.filter((v) => v >= o).length} jour(s) sur ${sem.length} noté(s).</p>`;
+  return h;
+}
 function quotidienBlock() {
   const t = today(), d = S.qDate && S.qDate <= t ? S.qDate : t, J = QJ(), x = J[d] || null, dates = Object.keys(J).sort().reverse();
   let h = `<h3>🍽️ Mon quotidien (repas, eau, activité, pas)</h3><p class="muted">Quelques clics par jour, juste ce qui t'est possible. Le site les compare à ta glycémie pour voir ce qui joue.</p>
@@ -202,7 +220,8 @@ function quotidienBlock() {
   <div class="chips">${Q_REPAS.map((r) => `<label class="ck"><input type="checkbox" name="qr" value="${esc(r)}" ${x && (x.repas || []).includes(r) ? "checked" : ""}> ${r}</label>`).join("")}</div>
   <div class="row">${field("qEau", "💧 Verres d'eau", "number", x ? x.eau ?? "" : "", 'min="0" max="30"')}${sel("qAct", "🏃 Activité", Q_ACT, x ? x.act || Q_ACT[0] : Q_ACT[0])}${field("qMin", "⏱️ Minutes d'activité", "number", x ? x.min ?? "" : "", 'min="0" max="600"')}${field("qPas", "👣 Nombre de pas", "number", x ? x.pas ?? "" : "", 'min="0" max="100000" inputmode="numeric"')}</div>
   ${field("qNote", "💬 Commentaire (facultatif)", "text", x ? x.note || "" : "", 'placeholder="Ex : marche lente à cause du genou, journée à l’hôpital…"')}
-  ${btn("💾 Enregistrer ce jour", "saveq")}`;
+  <div class="row">${field("qObj", "🎯 Mon objectif de pas par jour", "number", pasObjectif(), 'min="500" max="50000" step="500" inputmode="numeric"')}</div>
+  ${btn("💾 Enregistrer ce jour", "saveq")}${pasMessage(d)}`;
   // lien avec la glycémie
   const post = (date) => { const v = rows("suivi_glycemie").filter((r) => r.Date === date).map((r) => gv(r["Glycémie Post-Prandiale"])).filter((z) => z !== null); return v.length ? avg(v) : null; };
   const cmp = (titre, f) => { const a = [], b = []; dates.forEach((dt) => { const p = post(dt); if (p === null) return; (f(J[dt]) ? a : b).push(p); }); return a.length >= 3 && b.length >= 3 ? `<li>${titre} : <b>${r1(avg(a), 2)}</b> g/L contre <b>${r1(avg(b), 2)}</b> g/L les autres jours (${a.length} et ${b.length} jours).</li>` : ""; };
@@ -214,9 +233,10 @@ function quotidienBlock() {
 Object.assign(ACT_HEALTH, {
   async saveq() {
     const d = val("qDate") || today(), j = { ...QJ() };
+    const obj = num(val("qObj"));
     j[d] = { repas: picked("qr"), eau: num(val("qEau")), act: val("qAct"), min: num(val("qMin")), pas: num(val("qPas")), note: val("qNote").trim() };
-    if (await saveCfg(18, { jours: j })) { S.qDate = d; toast("🎉 Jour enregistré !"); render(); }
+    if (await saveCfg(18, { jours: j, objectif: obj || cfg(18).objectif })) { S.qDate = d; toast("🎉 Jour enregistré !"); render(); }
   },
-  async delq(el) { if (!confirm("Supprimer ce jour ?")) return; const j = { ...QJ() }; delete j[el.dataset.d]; if (await saveCfg(18, { jours: j })) render(); },
+  async delq(el) { if (!confirm("Supprimer ce jour ?")) return; const j = { ...QJ() }; delete j[el.dataset.d]; if (await saveCfg(18, { jours: j, objectif: cfg(18).objectif })) render(); },
 });
 Object.assign(CHG_HEALTH, { qDate(el) { S.qDate = !el.value || el.value > today() ? today() : el.value; render(); } });
