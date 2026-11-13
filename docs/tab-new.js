@@ -55,7 +55,8 @@ function renderToday() {
   const ap = rows("rdv_a_prendre").filter((r) => r.Statut === "À appeler").length;
   if (ap) h += `<div class="todo"><span>📞</span><div>${ap} rendez-vous à prendre</div>${btn("Ouvrir", "goto", "sec", 'data-t="rdv"')}</div>`;
 
-  h += "<hr>" + fold("❓ Mes questions pour le médecin" + (nbq ? ` (${nbq})` : ""), questionsRapides(false), nbq > 0 && rdv.some((r) => diffDays(r.Date, t) <= 3));
+  const sj = syJours()[t];
+  h += "<hr>" + (sj && (sj.s || sj.autre) ? box("info", "🤧 Symptômes notés aujourd'hui : " + esc([...(sj.s || []), sj.autre].filter(Boolean).join(", "))) : "") + fold("🤧 J'ai un symptôme aujourd'hui", symptomesBlock(), false) + fold("❓ Mes questions pour le médecin" + (nbq ? ` (${nbq})` : ""), questionsRapides(false), nbq > 0 && rdv.some((r) => diffDays(r.Date, t) <= 3));
   h += `<p class="muted">Besoin d'écrire autre chose ? Va dans <b>📝 Mon journal</b>.</p>`;
   return h;
 }

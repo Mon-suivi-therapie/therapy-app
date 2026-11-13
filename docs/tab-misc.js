@@ -57,6 +57,7 @@ function lignesFiche(vals) {
     fiche.push(["🩺 Tension", ln]);
   }
 
+  const sy = syFicheLignes(); if (sy.length) fiche.push(["🤧 Symptômes (30 derniers jours)", sy]);
   const apn = ppcFicheLignes(); if (apn.length) fiche.push(["😴 Appareil pour l'apnée du sommeil", apn]);
   const ep = epFicheLignes(); if (ep.length) fiche.push(["🩹 Crises et épisodes (30 derniers jours)", ep]);
 

@@ -162,3 +162,56 @@ document.addEventListener("input", (e) => {
   $("ppcLive").innerHTML = ppcMsg($("ppcUse").value, ppcParseH($("ppcH").value), num($("ppcIah").value));
 });
 document.addEventListener("change", (e) => { if (e.target && e.target.id === "ppcUse") e.target.dispatchEvent(new Event("input", { bubbles: true })); });
+
+// ===== 🤧 Symptômes du jour (config n°27 : { jours: { "AAAA-MM-JJ": { s: [...], autre, force } } }) =====
+const SY_GROUPES = [
+  ["🤢 Ventre et digestion", ["Diarrhée", "Constipation", "Nausées", "Vomissements", "Ballonnements", "Reflux / brûlures d'estomac", "Mal au ventre"]],
+  ["🤧 Nez, gorge, respiration", ["Nez bouché", "Nez qui coule", "Éternuements", "Mal de gorge", "Toux", "Essoufflement", "Yeux qui piquent"]],
+  ["🌡️ Général", ["Fièvre", "Frissons", "Courbatures", "Fatigue inhabituelle", "Vertiges", "Maux de tête", "Palpitations", "Sueurs / bouffées de chaleur"]],
+  ["🧴 Peau", ["Éruption / boutons", "Démangeaisons", "Poussée d'acné"]],
+  ["🌸 Urinaire et gynéco", ["Brûlures en urinant", "Pertes inhabituelles", "Saignements hors règles", "Douleur pelvienne", "Seins douloureux"]],
+  ["💭 Moral", ["Anxiété", "Pleurs", "Irritabilité"]],
+];
+const SY_FORCE = ["Léger", "Moyen", "Fort"];
+S.syDate = null;
+const syJours = () => cfg(27).jours || {};
+function symptomesBlock() {
+  const t = today(), d = S.syDate && S.syDate <= t ? S.syDate : t, x = syJours()[d] || {}, on = x.s || [];
+  let h = `<h3>🤧 J'ai un symptôme aujourd'hui</h3><p class="muted">Coche ce que tu ressens, même un petit symptôme. Ça sert à voir ce qui revient et à le dire à ton médecin.</p>
+  ${dateField("syDate", "🗓️ Jour", d, t)}
+  ${SY_GROUPES.map(([g, L]) => `<p><b>${g}</b></p>${chipsP("sy", L, on)}`).join("")}
+  ${field("syAutre", "Autre symptôme (écris-le)", "text", x.autre || "")}
+  ${sel("syForce", "Intensité globale", SY_FORCE, x.force || "Léger")}
+  ${btn("💾 Enregistrer mes symptômes", "sysave")}${x.s || x.autre ? btn("🗑️ Effacer ce jour", "sydel", "del") : ""}`;
+  const J = syJours(), recent = Object.keys(J).filter((k) => k >= addDays(t, -30)).sort().reverse();
+  if (recent.length) {
+    const c = {}; recent.forEach((k) => (J[k].s || []).forEach((v) => (c[v] = (c[v] || 0) + 1)));
+    const top = Object.entries(c).sort((a, b) => b[1] - a[1]).slice(0, 5);
+    if (top.length) h += `<p class="muted">🔎 Les plus fréquents sur 30 jours : ${top.map(([v, n]) => `${esc(v)} (${n} jour${n > 1 ? "s" : ""})`).join(", ")}</p>`;
+    h += fold(`📋 Mes symptômes récents (${recent.length} jour${recent.length > 1 ? "s" : ""})`, recent.slice(0, 20).map((k) => `<div class="jn"><b>${fr(k)}</b> <span class="tag">${esc(J[k].force || "")}</span><div>${esc([...(J[k].s || []), J[k].autre].filter(Boolean).join(", "))}</div></div>`).join(""));
+  }
+  return h;
+}
+function syFicheLignes() {
+  const t = today(), J = syJours(), R = Object.keys(J).filter((k) => k >= addDays(t, -30));
+  if (!R.length) return [];
+  const c = {}; R.forEach((k) => (J[k].s || []).forEach((v) => (c[v] = (c[v] || 0) + 1)));
+  const top = Object.entries(c).sort((a, b) => b[1] - a[1]).slice(0, 8).map(([v, n]) => `${v} (${n} j)`);
+  const autres = [...new Set(R.map((k) => J[k].autre).filter(Boolean))].slice(0, 5);
+  return [`${R.length} jour(s) avec symptômes sur 30 jours` + (top.length ? " : " + top.join(", ") : ""), ...(autres.length ? ["Autres : " + autres.join(", ")] : [])];
+}
+Object.assign(ACT_NEW, {
+  async sysave() {
+    const d = dval("syDate") || today(), s = picked("sy"), autre = val("syAutre").trim();
+    if (!s.length && !autre) return toast("Coche au moins un symptôme ou écris-le.");
+    const j = { ...syJours() }; j[d] = { s, autre, force: val("syForce") };
+    if (await saveCfg(27, { jours: j })) { S.syDate = d; toast("🤧 Symptômes enregistrés"); render(); }
+  },
+  async sydel() {
+    const d = dval("syDate") || today(); const j = { ...syJours() }; delete j[d];
+    if (confirm("Effacer les symptômes de ce jour ?") && await saveCfg(27, { jours: j })) { toast("Effacé"); render(); }
+  },
+});
+Object.assign(CHG_NEW, {
+  syDate(el) { S.syDate = !el.value || el.value > today() ? today() : el.value; [...DIRTY].filter((k) => k.startsWith("n:sy=") || k === "#syAutre" || k === "#syForce").forEach((k) => DIRTY.delete(k)); render(); },
+});
