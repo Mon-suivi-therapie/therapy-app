@@ -99,6 +99,15 @@ Object.assign(CHG_NEW, {
 
 // ===== 😴 Appareil pour l'apnée du sommeil : un traitement de la nuit (config n°26 : { nuits: { "AAAA-MM-JJ": { use, h, fuites, iah } } }) =====
 // La date est celle du matin (la nuit qui vient de se terminer).
+// heures au format 8:31 (ou 8h31, ou 8,5) -> nombre d'heures ; et l'inverse
+function ppcParseH(t) {
+  t = String(t ?? "").trim(); if (!t) return null;
+  const m = t.match(/^(\d{1,2})\s*[:hH]\s*(\d{0,2})$/);
+  if (m) { const mn = +(m[2] || 0); return mn > 59 ? null : +m[1] + mn / 60; }
+  const n = num(t); return n === null || isNaN(n) ? null : n;
+}
+const fmtH = (h) => { const t = Math.round(h * 60); return Math.floor(t / 60) + " h " + String(t % 60).padStart(2, "0"); };
+const fmtHin = (h) => { if (h === null || h === undefined || h === "") return ""; const t = Math.round(h * 60); return Math.floor(t / 60) + ":" + String(t % 60).padStart(2, "0"); };
 const PPC_USE = ["Oui, toute la nuit", "Une partie de la nuit", "Non"];
 const ppcNuits = () => cfg(26).nuits || {};
 function ppcMsg(use, h, iah) {
@@ -106,9 +115,9 @@ function ppcMsg(use, h, iah) {
   if (use === "Non") m.push(["warn", "🌙 Pas d'appareil cette nuit. Essaie de le remettre dès ce soir : il ne protège que quand tu le portes. S'il te gêne, dis-le à ton prestataire, il existe des réglages et des masques différents."]);
   else {
     if (h !== null && !isNaN(h)) {
-      if (h >= 7) m.push(["ok", `🎉 <b>${r1(h)} h</b> d'utilisation : très bien, l'appareil a couvert presque toute ta nuit.`]);
-      else if (h >= 4) m.push(["ok", `👍 <b>${r1(h)} h</b> d'utilisation : c'est au-dessus de 4 h, le minimum habituellement demandé. Plus tu en portes, mieux c'est.`]);
-      else m.push(["warn", `🌙 <b>${r1(h)} h</b> d'utilisation : en dessous de 4 h, le traitement agit peu. Si tu l'enlèves la nuit, note pourquoi (gêne, fuites, réveil) pour en parler au prestataire.`]);
+      if (h >= 7) m.push(["ok", `🎉 <b>${fmtH(h)}</b> d'utilisation : très bien, l'appareil a couvert presque toute ta nuit.`]);
+      else if (h >= 4) m.push(["ok", `👍 <b>${fmtH(h)}</b> d'utilisation : c'est au-dessus de 4 h, le minimum habituellement demandé. Plus tu en portes, mieux c'est.`]);
+      else m.push(["warn", `🌙 <b>${fmtH(h)}</b> d'utilisation : en dessous de 4 h, le traitement agit peu. Si tu l'enlèves la nuit, note pourquoi (gêne, fuites, réveil) pour en parler au prestataire.`]);
     }
     if (iah !== null && !isNaN(iah)) {
       if (iah < 5) m.push(["ok", `✅ <b>${r1(iah)} événement(s) par heure</b> : dans la normale, le traitement est efficace.`]);
@@ -123,26 +132,26 @@ function ppcBlock(date) {
   const x = ppcNuits()[date] || {}, N = Object.entries(ppcNuits()).sort((a, b) => b[0].localeCompare(a[0]));
   let h = `<h3>😴 Mon appareil pour l'apnée du sommeil</h3><p class="muted">C'est un traitement : note-le chaque matin pour la nuit qui vient de se passer (nuit du ${fr(addDays(date, -1))} au ${fr(date)}). Les chiffres sont ceux de l'écran de ton appareil ou de son application.</p>
   ${sel("ppcUse", "Appareil utilisé cette nuit ?", PPC_USE, x.use || PPC_USE[0])}
-  <div class="row">${field("ppcH", "⏱️ Heures d'utilisation", "number", x.h ?? "", 'min="0" max="24" step="0.1" inputmode="decimal"')}${field("ppcFu", "💨 Fuites (valeur de l'appareil)", "number", x.fuites ?? "", 'min="0" step="0.1" inputmode="decimal"')}${field("ppcIah", "📉 Événements (apnées) par heure", "number", x.iah ?? "", 'min="0" step="0.1" inputmode="decimal"')}</div>
+  <div class="row">${field("ppcH", "⏱️ Heures d'utilisation (ex : 8:31)", "text", fmtHin(x.h), 'placeholder="8:31" inputmode="numeric" autocomplete="off"')}${field("ppcFu", "💨 Fuites (valeur de l'appareil)", "number", x.fuites ?? "", 'min="0" step="0.1" inputmode="decimal"')}${field("ppcIah", "📉 Événements (apnées) par heure", "number", x.iah ?? "", 'min="0" step="0.1" inputmode="decimal"')}</div>
   ${btn("💾 Enregistrer l'appareil de cette nuit", "ppcsave", "", `data-d="${date}"`)}<div id="ppcLive">${x.use ? ppcMsg(x.use, x.h ?? null, x.iah ?? null) : ""}</div>`;
   const R = N.filter(([d]) => d >= addDays(date, -6) && d <= date);
   if (R.length >= 2) {
     const hs = R.map(([, v]) => num(v.h)).filter((v) => v !== null), is = R.map(([, v]) => num(v.iah)).filter((v) => v !== null);
-    h += `<p class="muted">📊 7 derniers jours : appareil porté ${R.filter(([, v]) => v.use !== "Non").length} nuit(s) sur ${R.length} notée(s)${hs.length ? `, ${hs.filter((v) => v >= 4).length} nuit(s) à 4 h ou plus (moyenne ${r1(avg(hs))} h)` : ""}${is.length ? `, ${r1(avg(is))} événement(s) par heure en moyenne` : ""}.</p>`;
+    h += `<p class="muted">📊 7 derniers jours : appareil porté ${R.filter(([, v]) => v.use !== "Non").length} nuit(s) sur ${R.length} notée(s)${hs.length ? `, ${hs.filter((v) => v >= 4).length} nuit(s) à 4 h ou plus (moyenne ${fmtH(avg(hs))})` : ""}${is.length ? `, ${r1(avg(is))} événement(s) par heure en moyenne` : ""}.</p>`;
   }
-  if (N.length) h += fold(`📋 Mes dernières nuits (${N.length})`, `<div class="tw"><table><thead><tr><th>Nuit du matin</th><th>Appareil</th><th>Heures</th><th>Fuites</th><th>Événements/h</th><th></th></tr></thead><tbody>${N.slice(0, 14).map(([d, v]) => `<tr><td>${fr(d)}</td><td>${esc(v.use || "")}</td><td>${v.h ?? ""}</td><td>${v.fuites ?? ""}</td><td>${v.iah ?? ""}</td><td><button class="b del" data-act="ppcdel" data-d="${d}" title="Supprimer">🗑️</button></td></tr>`).join("")}</tbody></table></div>`);
+  if (N.length) h += fold(`📋 Mes dernières nuits (${N.length})`, `<div class="tw"><table><thead><tr><th>Nuit du matin</th><th>Appareil</th><th>Heures</th><th>Fuites</th><th>Événements/h</th><th></th></tr></thead><tbody>${N.slice(0, 14).map(([d, v]) => `<tr><td>${fr(d)}</td><td>${esc(v.use || "")}</td><td>${v.h === null || v.h === undefined ? "" : fmtH(v.h)}</td><td>${v.fuites ?? ""}</td><td>${v.iah ?? ""}</td><td><button class="b del" data-act="ppcdel" data-d="${d}" title="Supprimer">🗑️</button></td></tr>`).join("")}</tbody></table></div>`);
   return h;
 }
 function ppcFicheLignes() {
   const t = today(), R = Object.entries(ppcNuits()).filter(([d]) => d >= addDays(t, -30));
   if (!R.length) return [];
   const hs = R.map(([, v]) => num(v.h)).filter((v) => v !== null), is = R.map(([, v]) => num(v.iah)).filter((v) => v !== null);
-  return [`Appareil porté ${R.filter(([, v]) => v.use !== "Non").length} nuit(s) sur ${R.length} notée(s) (30 jours)${hs.length ? `, ${hs.filter((v) => v >= 4).length} nuit(s) à 4 h ou plus, moyenne ${r1(avg(hs))} h` : ""}${is.length ? `, ${r1(avg(is))} événement(s)/heure en moyenne` : ""}`];
+  return [`Appareil porté ${R.filter(([, v]) => v.use !== "Non").length} nuit(s) sur ${R.length} notée(s) (30 jours)${hs.length ? `, ${hs.filter((v) => v >= 4).length} nuit(s) à 4 h ou plus, moyenne ${fmtH(avg(hs))}` : ""}${is.length ? `, ${r1(avg(is))} événement(s)/heure en moyenne` : ""}`];
 }
 Object.assign(ACT_NEW, {
   async ppcsave(el) {
     const d = el.dataset.d, use = val("ppcUse");
-    const n = { ...ppcNuits() }; n[d] = { use, h: num(val("ppcH")), fuites: num(val("ppcFu")), iah: num(val("ppcIah")) };
+    const n = { ...ppcNuits() }; n[d] = { use, h: ppcParseH(val("ppcH")), fuites: num(val("ppcFu")), iah: num(val("ppcIah")) };
     if (await saveCfg(26, { nuits: n })) { toast("😴 Appareil noté"); render(); }
   },
   async ppcdel(el) { if (!confirm("Supprimer cette nuit ?")) return; const n = { ...ppcNuits() }; delete n[el.dataset.d]; if (await saveCfg(26, { nuits: n })) render(); },
@@ -150,6 +159,6 @@ Object.assign(ACT_NEW, {
 // phrase en direct pendant la saisie
 document.addEventListener("input", (e) => {
   if (!e.target || !["ppcUse", "ppcH", "ppcIah"].includes(e.target.id) || !$("ppcLive")) return;
-  $("ppcLive").innerHTML = ppcMsg($("ppcUse").value, num($("ppcH").value), num($("ppcIah").value));
+  $("ppcLive").innerHTML = ppcMsg($("ppcUse").value, ppcParseH($("ppcH").value), num($("ppcIah").value));
 });
 document.addEventListener("change", (e) => { if (e.target && e.target.id === "ppcUse") e.target.dispatchEvent(new Event("input", { bubbles: true })); });
