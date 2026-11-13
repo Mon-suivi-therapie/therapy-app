@@ -197,9 +197,11 @@ const Q_REPAS = ["🥦 Légumes en premier", "🍗 Protéines à chaque repas", 
 const Q_ACT = ["Aucune", "Marche", "Sport", "Ménage / jardin", "Autre"];
 const PAS_OBJ_DEF = 5000;
 const pasObjectif = () => num(cfg(18).objectif) || PAS_OBJ_DEF;
-function pasMessage(d) {
-  const J = QJ(), x = J[d]; if (!x || x.pas === null || x.pas === undefined || x.pas === "") return "";
-  const p = num(x.pas), o = pasObjectif(), r = p / o, fmt = (n) => Math.round(n).toLocaleString("fr-FR");
+function pasMessage(d, live) {
+  const J = QJ(), x = J[d];
+  const p = live !== undefined ? live : x && x.pas !== undefined && x.pas !== "" ? num(x.pas) : null;
+  if (p === null || isNaN(p)) return "";
+  const o = pasObjectif(), r = p / o, fmt = (n) => Math.round(n).toLocaleString("fr-FR");
   const mal = epListe().some((e) => e.date === d && /genou|fibromyalgie/i.test(e.type));
   let m;
   if (r >= 1.5) m = ["ok", `🎉 <b>${fmt(p)} pas</b> : tu as dépassé ton objectif de ${fmt(o)} pas, bravo ! Pense à te reposer et à boire de l'eau.`];
@@ -219,22 +221,30 @@ function quotidienBlock() {
   ${field("qDate", "🗓️ Jour", "date", d, `max="${t}"`)}
   <div class="chips">${Q_REPAS.map((r) => `<label class="ck"><input type="checkbox" name="qr" value="${esc(r)}" ${x && (x.repas || []).includes(r) ? "checked" : ""}> ${r}</label>`).join("")}</div>
   <div class="row">${field("qEau", "💧 Verres d'eau", "number", x ? x.eau ?? "" : "", 'min="0" max="30"')}${sel("qAct", "🏃 Activité", Q_ACT, x ? x.act || Q_ACT[0] : Q_ACT[0])}${field("qMin", "⏱️ Minutes d'activité", "number", x ? x.min ?? "" : "", 'min="0" max="600"')}${field("qPas", "👣 Nombre de pas", "number", x ? x.pas ?? "" : "", 'min="0" max="100000" inputmode="numeric"')}</div>
-  ${field("qNote", "💬 Commentaire (facultatif)", "text", x ? x.note || "" : "", 'placeholder="Ex : marche lente à cause du genou, journée à l’hôpital…"')}
   <div class="row">${field("qObj", "🎯 Mon objectif de pas par jour", "number", pasObjectif(), 'min="500" max="50000" step="500" inputmode="numeric"')}</div>
-  ${btn("💾 Enregistrer ce jour", "saveq")}${pasMessage(d)}`;
+  ${btn("💾 Enregistrer ce jour", "saveq")}<div id="qPasLive">${pasMessage(d)}</div>`;
   // lien avec la glycémie
   const post = (date) => { const v = rows("suivi_glycemie").filter((r) => r.Date === date).map((r) => gv(r["Glycémie Post-Prandiale"])).filter((z) => z !== null); return v.length ? avg(v) : null; };
   const cmp = (titre, f) => { const a = [], b = []; dates.forEach((dt) => { const p = post(dt); if (p === null) return; (f(J[dt]) ? a : b).push(p); }); return a.length >= 3 && b.length >= 3 ? `<li>${titre} : <b>${r1(avg(a), 2)}</b> g/L contre <b>${r1(avg(b), 2)}</b> g/L les autres jours (${a.length} et ${b.length} jours).</li>` : ""; };
   const L = [cmp("Jours avec boisson sucrée ou grignotage sucré, glycémie après repas", (z) => (z.repas || []).some((r) => /sucré/.test(r))), cmp("Jours avec 30 min d'activité ou plus", (z) => (num(z.min) || 0) >= 30), cmp("Jours avec 5 000 pas ou plus", (z) => (num(z.pas) || 0) >= 5000), cmp("Jours où tu as mangé les légumes en premier", (z) => (z.repas || []).some((r) => /Légumes/.test(r)))].filter(Boolean);
   h += dates.length ? (L.length ? `<h4>🔎 Ce que montrent tes jours</h4><ul>${L.join("")}</ul><p class="muted">Ce sont des tendances sur peu de jours, pas des preuves.</p>` : `<p class="muted">Dès que tu auras noté au moins 3 jours de chaque sorte avec une glycémie après repas, le site les comparera ici.</p>`) : "";
-  if (dates.length) h += fold(`📋 Mes derniers jours (${dates.length})`, `<div class="tw"><table><thead><tr><th>Date</th><th>Repas</th><th>Eau</th><th>Activité</th><th>Pas</th><th>Commentaire</th><th></th></tr></thead><tbody>${dates.slice(0, 14).map((dt) => `<tr><td>${fr(dt)}</td><td>${esc((J[dt].repas || []).join(" · "))}</td><td>${J[dt].eau ?? ""}</td><td>${esc((J[dt].act || "") + (J[dt].min ? " " + J[dt].min + " min" : ""))}</td><td>${J[dt].pas ?? ""}</td><td>${esc(J[dt].note || "")}</td><td><button class="b del" data-act="delq" data-d="${dt}" title="Supprimer">🗑️</button></td></tr>`).join("")}</tbody></table></div>`);
+  if (dates.length) h += fold(`📋 Mes derniers jours (${dates.length})`, `<div class="tw"><table><thead><tr><th>Date</th><th>Repas</th><th>Eau</th><th>Activité</th><th>Pas</th><th></th></tr></thead><tbody>${dates.slice(0, 14).map((dt) => `<tr><td>${fr(dt)}</td><td>${esc((J[dt].repas || []).join(" · "))}</td><td>${J[dt].eau ?? ""}</td><td>${esc((J[dt].act || "") + (J[dt].min ? " " + J[dt].min + " min" : ""))}</td><td>${J[dt].pas ?? ""}</td><td><button class="b del" data-act="delq" data-d="${dt}" title="Supprimer">🗑️</button></td></tr>`).join("")}</tbody></table></div>`);
   return h + "<hr>";
 }
+// phrase en direct pendant que tu écris le nombre de pas
+document.addEventListener("input", (e) => {
+  if (!e.target || (e.target.id !== "qPas" && e.target.id !== "qObj")) return;
+  const box = $("qPasLive"), d = $("qDate") ? $("qDate").value || today() : today(); if (!box) return;
+  const v = $("qPas").value.trim(), o = num($("qObj").value);
+  const keep = cfg(18).objectif; if (o) S.cfg[18] = { ...cfg(18), objectif: o };
+  box.innerHTML = v === "" ? pasMessage(d) : pasMessage(d, num(v));
+  S.cfg[18] = { ...cfg(18), objectif: keep };
+});
 Object.assign(ACT_HEALTH, {
   async saveq() {
     const d = val("qDate") || today(), j = { ...QJ() };
     const obj = num(val("qObj"));
-    j[d] = { repas: picked("qr"), eau: num(val("qEau")), act: val("qAct"), min: num(val("qMin")), pas: num(val("qPas")), note: val("qNote").trim() };
+    j[d] = { repas: picked("qr"), eau: num(val("qEau")), act: val("qAct"), min: num(val("qMin")), pas: num(val("qPas")) };
     if (await saveCfg(18, { jours: j, objectif: obj || cfg(18).objectif })) { S.qDate = d; toast("🎉 Jour enregistré !"); render(); }
   },
   async delq(el) { if (!confirm("Supprimer ce jour ?")) return; const j = { ...QJ() }; delete j[el.dataset.d]; if (await saveCfg(18, { jours: j, objectif: cfg(18).objectif })) render(); },
