@@ -29,7 +29,7 @@ function renderToday() {
   if (S.set.parcours === PARCOURS[1]) items.push([tnTous().some((r) => r.date === t), "Tension du jour", "cycle"]);
   items.push([rows("suivi_douleur_fatigue").some((r) => r.Date === t), "Douleur, fatigue et sommeil", "df"]);
   items.push([!!humeurs()[t], "Mon humeur du jour", "df"]);
-  items.push([!!ppcNuits()[t], "Appareil d'apnée du sommeil : l'ai-je utilisé cette nuit ?", "today"]);
+  items.push([!!ppcNuits()[t], "Appareil d'apnée du sommeil : l'ai-je utilisé cette nuit ?", "dash"]);
   const qj = QJ()[t] || null;
   items.push([!!(qj && (qj.eau || qj.pas || (qj.repas || []).length || (qj.min))), "Mon quotidien (repas, eau, activité" + (qj && qj.pas ? ", " + qj.pas + " pas" : ", pas") + ")", "health"]);
   if (rows("suivi_neuro").some((r) => r.Date >= addDays(t, -14))) items.push([rows("suivi_neuro").some((r) => r.Date === t), "Check-in TDAH / TSA / SPT du jour", "tdah"]);
@@ -55,7 +55,7 @@ function renderToday() {
   const ap = rows("rdv_a_prendre").filter((r) => r.Statut === "À appeler").length;
   if (ap) h += `<div class="todo"><span>📞</span><div>${ap} rendez-vous à prendre</div>${btn("Ouvrir", "goto", "sec", 'data-t="rdv"')}</div>`;
 
-  h += "<hr>" + ppcBlock(t) + "<hr>" + fold("❓ Mes questions pour le médecin" + (nbq ? ` (${nbq})` : ""), questionsRapides(false), nbq > 0 && rdv.some((r) => diffDays(r.Date, t) <= 3));
+  h += "<hr>" + fold("❓ Mes questions pour le médecin" + (nbq ? ` (${nbq})` : ""), questionsRapides(false), nbq > 0 && rdv.some((r) => diffDays(r.Date, t) <= 3));
   h += `<p class="muted">Besoin d'écrire autre chose ? Va dans <b>📝 Mon journal</b>.</p>`;
   return h;
 }

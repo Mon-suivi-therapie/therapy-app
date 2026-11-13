@@ -1,7 +1,7 @@
 // ===== Navigation, rendu et événements =====
 const NAV = [
   ["today", "☀️ Aujourd'hui", renderToday, null],
-  ["dash", "📱 Tableau de Bord", renderDash, null],
+  ["dash", "💊 Traitement", renderDash, null],
   ["cycle", "🌸 Mon Suivi Féminin", renderCycle, () => { afterCycle(); if (S.set.parcours === PARCOURS[3]) afterPostPartum(); if (S.set.parcours === PARCOURS[0] || S.set.parcours === PARCOURS[2]) afterSopk(); }],
   ["rdv", "📅 Rendez-vous Médicaux", renderRdv, null],
   ["health", "🥗 Suivi Glycémie & Nutrition", renderHealth, afterHealth],
