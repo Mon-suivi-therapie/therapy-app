@@ -91,9 +91,13 @@ function forgetRead(used) {
   used.forEach((r) => { if (r.startsWith("n:")) [...DIRTY].forEach((k) => k.startsWith(r + "=") && DIRTY.delete(k)); else DIRTY.delete("#" + r); });
 }
 
+const PLUS = ["resume", "fiche", "tsa", "tdah", "spt", "histo"]; // rangés sous « Plus »
+S.plusOpen = false;
 function render() {
   const keep = S.inAct ? snapForm() : null;
-  $("nav").innerHTML = NAV.map(([k, l]) => `<button data-nav="${k}" class="${k === S.tab ? "on" : ""}">${l}</button>`).join("");
+  const inPlus = PLUS.includes(S.tab), bt = ([k, l]) => `<button data-nav="${k}" class="${k === S.tab ? "on" : ""}">${l}</button>`;
+  $("nav").innerHTML = NAV.filter((n) => !PLUS.includes(n[0])).map(bt).join("") + `<button data-nav="plus" class="${inPlus ? "on" : ""}" aria-expanded="${inPlus || S.plusOpen}">⋯ Plus ${inPlus || S.plusOpen ? "▴" : "▾"}</button>`;
+  $("nav2").innerHTML = inPlus || S.plusOpen ? NAV.filter((n) => PLUS.includes(n[0])).map(bt).join("") : ""; $("nav2").hidden = !$("nav2").innerHTML;
   const cur = NAV.find((n) => n[0] === S.tab) || NAV[0];
   const y = window.scrollY;
   let html = S.warn.map((w) => box("warn", "⚠️ " + esc(w))).join("");
@@ -121,7 +125,8 @@ $("sideBtn").addEventListener("click", () => setSide(!document.body.classList.co
 
 document.addEventListener("click", async (e) => {
   const n = e.target.closest("[data-nav]");
-  if (n) { DIRTY.clear(); S.tab = n.dataset.nav; location.hash = S.tab; render(); window.scrollTo(0, 0); return; }
+  if (n && n.dataset.nav === "plus") { S.plusOpen = !S.plusOpen; render(); return; }
+  if (n) { DIRTY.clear(); if (!PLUS.includes(n.dataset.nav)) S.plusOpen = false; S.tab = n.dataset.nav; location.hash = S.tab; render(); window.scrollTo(0, 0); return; }
   const a = e.target.closest("[data-act]");
   if (a && ACT[a.dataset.act]) {
     a.disabled = true; READ.clear(); S.actRead = null; S.inAct = true;

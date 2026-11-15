@@ -162,3 +162,6 @@ details.secfold>summary::-webkit-details-marker{display:none}
 details.secfold>summary::before{content:"▾";display:inline-block;margin-right:.5rem;color:var(--rose-d);transition:transform .15s}
 details.secfold:not([open])>summary::before{transform:rotate(-90deg)}
 @media print{details.secfold>summary::before{content:""}}
+
+#nav2{position:static;margin:0 0 6px;padding:0 0 6px;background:none}#nav2 button{font-size:.82rem;padding:6px 13px;background:var(--bg)}
+#nav2[hidden]{display:none}
