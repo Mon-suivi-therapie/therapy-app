@@ -53,7 +53,7 @@ function renderToday() {
   let h = `<h2>☀️ Aujourd'hui</h2><p class="muted" style="text-transform:capitalize">${esc(jour)}</p>${stockAlertes()}`;
   h += `${bar(faits / items.length)}<p class="muted">${faits} chose(s) faite(s) sur ${items.length}</p>`;
   h += items.map(([ok, txt, tab, scroll]) => `<div class="todo ${ok ? "ok" : ""}"><span>${ok ? "✅" : "⬜"}</span><div>${txt}</div>${ok || tab === "today" ? "" : btn("Ouvrir", "goto", "sec", `data-t="${tab}"${scroll ? ` data-s="${scroll}"` : ""}`)}</div>`).join("");
-  h += `<div class="todo"><span>🗓️</span><div>Ma routine (TDAH)</div>${btn("Ouvrir ma routine", "goto", "sec", 'data-t="tdah" data-s="Ma routine"')}</div>`;
+  h += `<div class="todo"><span>🗓️</span><div>Ma routine (TDAH)</div><a class="b sec" href="https://mon-suivi-therapie.github.io/routine-tdah/" target="_blank" rel="noopener" style="text-decoration:none;white-space:nowrap">Ouvrir ma routine ↗</a></div>`;
   if (nbM) h += `<p>${btn("✅ J'ai tout pris comme d'habitude (un clic)", "todayall")}</p>`;
   else if (total && faits === items.length) h += box("ok", "🌿 Tout est fait pour aujourd'hui. Tu peux te reposer.");
 
