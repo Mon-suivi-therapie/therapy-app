@@ -44,6 +44,10 @@ function renderToday() {
     const debut = wd <= 2 ? addDays(t, -(wd - 1)) : addDays(t, -(wd - 5)); // lundi ou vendredi de cette période
     items.push([rows("suivi_glycemie").some((r) => r.Date >= debut && r.Date <= t), wd <= 2 ? "Glycémie à jeun (jour de mesure du début de semaine)" : "Glycémie après repas (jour de mesure de fin de semaine)", "health"]);
   }
+  // ordre choisi : 1 médicaments, 2 appareil d'apnée, 3 température, 4 quotidien, 5 glycémie, 6 pesée, 7 conseils nutrition, 8 douleur, 9 humeur
+  const ORDRE = [/médicaments|À prendre/, /Appareil d'apnée/, /Température|Tension/, /Mon quotidien/, /Glycémie/, /Pesée/, /Conseils nutrition/, /Douleur, fatigue/, /Mon humeur/, /Check-in/];
+  const rang = (it) => { const i = ORDRE.findIndex((r) => r.test(it[1])); return i < 0 ? 99 : i; };
+  items.sort((x, y) => rang(x) - rang(y));
   const faits = items.filter((i) => i[0]).length;
 
   let h = `<h2>☀️ Aujourd'hui</h2><p class="muted" style="text-transform:capitalize">${esc(jour)}</p>${stockAlertes()}`;
