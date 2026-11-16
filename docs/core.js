@@ -152,7 +152,7 @@ function drawChart(id, cfgChart) {
 const dayNum = (s) => Math.round(parseD(s) / 864e5);
 const dayLabel = (n) => { const d = new Date(n * 864e5); return String(d.getUTCDate()).padStart(2, "0") + "/" + String(d.getUTCMonth() + 1).padStart(2, "0"); };
 const PALETTE = ["#1f77b4", "#ff7f0e", "#2ca02c", "#9467bd", "#8c564b", "#e377c2", "#17becf", "#bcbd22"];
-function lineChart(id, datasets, { ymin, ymax, ytitle, xnum = false, vlines = [], bands = [], tipLabel = null } = {}) {
+function lineChart(id, datasets, { ymin, ymax, ytitle, xnum = false, vlines = [], bands = [], tipLabel = null, y2 = null } = {}) {
   drawChart(id, {
     type: "line",
     data: { datasets },
@@ -162,6 +162,7 @@ function lineChart(id, datasets, { ymin, ymax, ytitle, xnum = false, vlines = []
       scales: {
         x: { type: "linear", ticks: { callback: (v) => (xnum ? v : dayLabel(v)), maxTicksLimit: 8 }, title: { display: xnum, text: "Jour du cycle" } },
         y: { min: ymin, max: ymax, title: { display: !!ytitle, text: ytitle || "" } },
+        ...(y2 ? { y2: { position: "right", min: y2.min, grid: { drawOnChartArea: false }, title: { display: true, text: y2.title || "" } } } : {}),
       },
       plugins: { legend: { position: "bottom" }, tooltip: { callbacks: { title: (it) => (xnum ? "Jour " + it[0].parsed.x : dayLabel(it[0].parsed.x)), ...(tipLabel ? { label: tipLabel } : {}) } } },
     },

@@ -110,7 +110,7 @@ const fmtH = (h) => { const t = Math.round(h * 60); return Math.floor(t / 60) + 
 const fmtHin = (h) => { if (h === null || h === undefined || h === "") return ""; const t = Math.round(h * 60); return Math.floor(t / 60) + ":" + String(t % 60).padStart(2, "0"); };
 const PPC_USE = ["Oui, toute la nuit", "Une partie de la nuit", "Non"];
 const ppcNuits = () => cfg(26).nuits || {};
-function ppcMsg(use, h, iah) {
+function ppcMsg(use, h, iah, fu) {
   const m = [];
   if (use === "Non") m.push(["warn", "🌙 Pas d'appareil cette nuit. Essaie de le remettre dès ce soir : il ne protège que quand tu le portes. S'il te gêne, dis-le à ton prestataire, il existe des réglages et des masques différents."]);
   else {
@@ -126,6 +126,12 @@ function ppcMsg(use, h, iah) {
       else m.push(["err", `🚨 <b>${r1(iah)} événements par heure</b> : très élevé. Parle-en à ton médecin du sommeil ou à ton prestataire rapidement.`]);
     }
   }
+  if (use !== "Non" && fu !== null && fu !== undefined && !isNaN(fu)) {
+    if (fu < 24) m.push(["ok", `💨 <b>${r1(fu)} L/min</b> de fuites : c'est correct (beaucoup d'appareils visent moins de 24 L/min de fuites non voulues). Le masque est bien étanche.`]);
+    else if (fu < 40) m.push(["warn", `💨 <b>${r1(fu)} L/min</b> de fuites : un peu élevé. Vérifie la position du masque, les sangles (pas trop serrées) et l'état du coussin. Essaie de le réajuster allongée avant de dormir.`]);
+    else m.push(["err", `💨 <b>${r1(fu)} L/min</b> de fuites : élevé. Le traitement est sûrement moins efficace : change ou nettoie le coussin du masque, vérifie la taille, et préviens ton prestataire s'il y en a encore plusieurs nuits de suite.`]);
+    m.push(["info", "ℹ️ Selon ton appareil, la valeur peut inclure les fuites voulues du masque : compare avec la valeur « normale » indiquée par ton prestataire."]);
+  }
   return m.map(([k, t]) => box(k, t)).join("");
 }
 function ppcBlock(date) {
@@ -133,7 +139,8 @@ function ppcBlock(date) {
   let h = `<h3>😴 Mon appareil pour l'apnée du sommeil</h3><p class="muted">C'est un traitement : note-le chaque matin pour la nuit qui vient de se passer (nuit du ${fr(addDays(date, -1))} au ${fr(date)}). Les chiffres sont ceux de l'écran de ton appareil ou de son application : fuites en L/min, événements en nombre par heure.</p>
   ${sel("ppcUse", "Appareil utilisé cette nuit ?", PPC_USE, x.use || PPC_USE[0])}
   <div class="row">${field("ppcH", "⏱️ Heures d'utilisation (ex : 8:31)", "text", fmtHin(x.h), 'placeholder="8:31" inputmode="numeric" autocomplete="off"')}${field("ppcFu", "💨 Fuites (L/min)", "number", x.fuites ?? "", 'min="0" step="0.1" inputmode="decimal"')}${field("ppcIah", "📉 Événements (apnées) / heure", "number", x.iah ?? "", 'min="0" step="0.1" inputmode="decimal"')}</div>
-  ${btn("💾 Enregistrer l'appareil de cette nuit", "ppcsave", "", `data-d="${date}"`)}<div id="ppcLive">${x.use ? ppcMsg(x.use, x.h ?? null, x.iah ?? null) : ""}</div>`;
+  ${btn("💾 Enregistrer l'appareil de cette nuit", "ppcsave", "", `data-d="${date}"`)}<div id="ppcLive">${x.use ? ppcMsg(x.use, x.h ?? null, x.iah ?? null, x.fuites ?? null) : ""}</div>`;
+  if (N.filter(([, v]) => num(v.h) !== null || num(v.iah) !== null || num(v.fuites) !== null).length >= 2) h += `<div class="chart" style="height:280px"><canvas id="chPpc"></canvas></div>`;
   const R = N.filter(([d]) => d >= addDays(date, -6) && d <= date);
   if (R.length >= 2) {
     const hs = R.map(([, v]) => num(v.h)).filter((v) => v !== null), is = R.map(([, v]) => num(v.iah)).filter((v) => v !== null);
@@ -158,8 +165,8 @@ Object.assign(ACT_NEW, {
 });
 // phrase en direct pendant la saisie
 document.addEventListener("input", (e) => {
-  if (!e.target || !["ppcUse", "ppcH", "ppcIah"].includes(e.target.id) || !$("ppcLive")) return;
-  $("ppcLive").innerHTML = ppcMsg($("ppcUse").value, ppcParseH($("ppcH").value), num($("ppcIah").value));
+  if (!e.target || !["ppcUse", "ppcH", "ppcIah", "ppcFu"].includes(e.target.id) || !$("ppcLive")) return;
+  $("ppcLive").innerHTML = ppcMsg($("ppcUse").value, ppcParseH($("ppcH").value), num($("ppcIah").value), num($("ppcFu").value));
 });
 document.addEventListener("change", (e) => { if (e.target && e.target.id === "ppcUse") e.target.dispatchEvent(new Event("input", { bubbles: true })); });
 
@@ -270,3 +277,14 @@ document.addEventListener("change", (e) => {
   const el = e.target; if (!el || !$("syAdvice")) return;
   if (el.name === "sy" || el.id === "syForce") $("syAdvice").innerHTML = syConseils(picked("sy"), $("syForce").value);
 });
+
+function afterPpcChart() {
+  if (!$("chPpc")) return;
+  const N = Object.entries(ppcNuits()).sort((a, b) => a[0].localeCompare(b[0])).slice(-30);
+  const ser = (label, f, color, axis, dash) => ({ label, data: N.map(([d, v]) => ({ x: dayNum(d), y: f(v) })).filter((p) => p.y !== null && p.y !== undefined && !isNaN(p.y)), borderColor: color, backgroundColor: color, tension: 0.2, pointRadius: 3, yAxisID: axis, borderDash: dash || [] });
+  lineChart("chPpc", [
+    ser("Heures d'utilisation", (v) => num(v.h), "#4a7bd0", "y"),
+    ser("Événements / heure", (v) => num(v.iah), "#d2577d", "y2"),
+    ser("Fuites (L/min)", (v) => num(v.fuites), "#e0a030", "y2", [5, 4]),
+  ], { ymin: 0, ytitle: "Heures", y2: { min: 0, title: "Événements/h et fuites L/min" }, tipLabel: (c) => `${c.dataset.label} : ${c.dataset.yAxisID === "y" ? fmtH(c.parsed.y) : r1(c.parsed.y)}` });
+}

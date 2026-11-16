@@ -24,16 +24,20 @@ function renderToday() {
   const t = today(), jour = new Intl.DateTimeFormat("fr-FR", { timeZone: "Europe/Paris", weekday: "long", day: "numeric", month: "long" }).format(new Date());
   const { out: manq, total } = manquants(t), nbM = Object.values(manq).reduce((a, m) => a + m.length, 0);
   const items = []; // [fait, texte (html), onglet]
+  const wd = parseD(t).getUTCDay(); // 1 lundi … 6 samedi
   if (total) items.push([nbM === 0, nbM === 0 ? "Tous mes médicaments sont pris" : "À prendre : " + Object.entries(manq).map(([n, m]) => `<b>${esc(n)}</b> (${esc(m.join(", "))}${S.meds[n].heure_precise ? " ⏰ " + esc(S.meds[n].heure_precise) : ""})`).join(" · "), "dash"]);
   if (S.set.parcours === PARCOURS[0]) items.push([rows("cycle_temperature").some((r) => r.Date === t), "Température basale", "cycle"]);
   if (S.set.parcours === PARCOURS[1]) items.push([tnTous().some((r) => r.date === t), "Tension du jour", "cycle"]);
   items.push([rows("suivi_douleur_fatigue").some((r) => r.Date === t), "Douleur, fatigue et sommeil", "df"]);
   items.push([!!humeurs()[t], "Mon humeur du jour", "df"]);
   items.push([!!ppcNuits()[t], "Appareil d'apnée du sommeil : l'ai-je utilisé cette nuit ?", "dash"]);
+  if (wd === 1 || wd === 5) {
+    const pw = rows("suivi_poids").map((r) => ({ d: r.Date, k: num(r["Poids (kg)"]) })).filter((r) => r.k !== null).sort((a, b) => a.d.localeCompare(b.d)), dp = pw[pw.length - 1];
+    items.push([pw.some((r) => r.d === t), "Pesée du jour (lundi et vendredi)" + (dp ? ` · dernière : ${r1(dp.k)} kg le ${fr2(dp.d)}` : ""), "health"]);
+  }
   const qj = QJ()[t] || null;
   items.push([!!(qj && (qj.eau || qj.pas || (qj.repas || []).length || (qj.min))), "Mon quotidien (repas, eau, activité" + (qj && qj.pas ? ", " + qj.pas + " pas" : ", pas") + ")", "health"]);
   if (rows("suivi_neuro").some((r) => r.Date >= addDays(t, -14))) items.push([rows("suivi_neuro").some((r) => r.Date === t), "Check-in TDAH / TSA / SPT du jour", "tdah"]);
-  const wd = parseD(t).getUTCDay(); // 1 lundi … 6 samedi
   if (GP_JOURS.includes(wd)) {
     const debut = wd <= 2 ? addDays(t, -(wd - 1)) : addDays(t, -(wd - 5)); // lundi ou vendredi de cette période
     items.push([rows("suivi_glycemie").some((r) => r.Date >= debut && r.Date <= t), wd <= 2 ? "Glycémie à jeun (jour de mesure du début de semaine)" : "Glycémie après repas (jour de mesure de fin de semaine)", "health"]);
@@ -43,9 +47,11 @@ function renderToday() {
   let h = `<h2>☀️ Aujourd'hui</h2><p class="muted" style="text-transform:capitalize">${esc(jour)}</p>${stockAlertes()}`;
   h += `${bar(faits / items.length)}<p class="muted">${faits} chose(s) faite(s) sur ${items.length}</p>`;
   h += items.map(([ok, txt, tab]) => `<div class="todo ${ok ? "ok" : ""}"><span>${ok ? "✅" : "⬜"}</span><div>${txt}</div>${ok || tab === "today" ? "" : btn("Ouvrir", "goto", "sec", `data-t="${tab}"`)}</div>`).join("");
+  h += `<div class="todo"><span>🗓️</span><div>Ma routine (TDAH)</div>${btn("Ouvrir ma routine", "goto", "sec", 'data-t="tdah" data-s="Ma routine"')}</div>`;
   if (nbM) h += `<p>${btn("✅ J'ai tout pris comme d'habitude (un clic)", "todayall")}</p>`;
   else if (total && faits === items.length) h += box("ok", "🌿 Tout est fait pour aujourd'hui. Tu peux te reposer.");
 
+  h += conseilsDuJour(t, wd);
   const rdv = rows("rdv_medicaux").filter((r) => r.Date >= t && !["✅ Effectué", "❌ Annulé"].includes(r.Statut)).sort((a, b) => (a.Date + (a.Heure || "")).localeCompare(b.Date + (b.Heure || ""))).slice(0, 3);
   const nbq = qrEnAttente().length;
   if (rdv.length) {
@@ -133,7 +139,10 @@ function exFicheLignes() {
 
 // ---------- actions ----------
 const ACT_NEW = {
-  goto(el) { DIRTY.clear(); S.tab = el.dataset.t; location.hash = S.tab; render(); window.scrollTo(0, 0); },
+  goto(el) {
+    DIRTY.clear(); S.tab = el.dataset.t; location.hash = S.tab; render(); window.scrollTo({ top: 0, behavior: "instant" });
+    if (el.dataset.s) { const sm = [...document.querySelectorAll("#main summary")].find((x) => x.textContent.includes(el.dataset.s)); if (sm) { const d = sm.closest("details"); if (d) d.open = true; sm.scrollIntoView({ behavior: "instant", block: "start" }); } }
+  },
   async todayall() { S.dashDate = today(); await ACT_DASH.toutpris(); },
   // questions
   async qradd() {
@@ -222,4 +231,21 @@ function glyPasBlock() {
   h += bloc("À jeun", "🌅 Glycémie à jeun et pas de la veille", "Veille à") + bloc("Après repas", "🍽️ Glycémie après repas et pas du jour", "Jour à");
   h += `<div class="tw"><table><thead><tr><th>Date</th><th>Mesure</th><th>Glycémie (g/L)</th><th>Pas la veille</th><th>Pas ce jour</th><th>Moyenne des 3 jours avant</th></tr></thead><tbody>${M.slice(0, 10).map((x) => `<tr><td>${fr(x.date)}</td><td>${x.type}</td><td>${r1(x.g, 2)}</td><td>${x.veille !== null ? fmt(x.veille) : "—"}</td><td>${x.jour !== null ? fmt(x.jour) : "—"}</td><td>${x.moy3 !== null ? fmt(x.moy3) : "—"}</td></tr>`).join("")}</tbody></table></div><p class="muted">Ce sont des tendances sur peu de mesures, pas des preuves : la glycémie dépend aussi de ce que tu manges, du stress et du sommeil.</p>`;
   return h;
+}
+
+// ---------- 💡 conseils du jour (selon ce que tu as noté) ----------
+function conseilsDuJour(t, wd) {
+  const c = [], obj = pasObjectif(), fmt = (n) => Math.round(n).toLocaleString("fr-FR"), hier = gpPas(addDays(t, -1)), nuit = ppcNuits()[t];
+  if (hier !== null) c.push(hier >= obj ? `👣 Hier tu as fait <b>${fmt(hier)} pas</b> : objectif atteint, bravo ! Garde un rythme que ton genou supporte.` : `👣 Hier : <b>${fmt(hier)} pas</b> (objectif ${fmt(obj)}). Aujourd'hui, une marche tranquille de 10 à 15 minutes après un repas aide ta glycémie et ton énergie.`);
+  if (nuit) { const h = num(nuit.h); if (nuit.use === "Non") c.push("😴 Pas d'appareil cette nuit : remets-le dès ce soir, c'est lui qui protège ton sommeil."); else if (h !== null && h < 4) c.push(`😴 Seulement ${fmtH(h)} d'appareil cette nuit : essaie de le garder plus longtemps ce soir, et note ce qui t'a gênée.`); }
+  else c.push("😴 Pense à noter ton appareil d'apnée de cette nuit (onglet Traitement).");
+  const hu = humeurs(), bas = [0, 1].map((k) => hu[addDays(t, -k)]).filter(Boolean);
+  if (bas.length && bas.every((x) => x.h <= 2)) c.push("💛 Ton moral est bas ces derniers jours. Parle à quelqu'un de confiance ou à ton médecin. Si tu as des pensées noires : 3114 (gratuit, 24 h/24).");
+  if (wd === 1 || wd === 5) c.push("⚖️ Jour de pesée : pèse-toi le matin, après les toilettes, avant de manger, dans les mêmes conditions que d'habitude.");
+  if (wd === 0 || wd === 4) c.push("⚖️ Demain : pesée et, selon le cas, glycémie. Pense à rester à jeun le matin et à noter tes pas aujourd'hui.");
+  if (GP_JOURS.includes(wd)) c.push("🩸 Jour possible de glycémie (" + (wd <= 2 ? "à jeun" : "après un repas") + ") : note aussi tes pas d'hier et d'aujourd'hui pour que le lien se calcule.");
+  const q = QJ()[t]; if (parisNow().h >= 14 && (!q || (num(q.eau) || 0) < 4)) c.push("💧 Pense à boire : il est tard dans la journée et tu as peu noté d'eau.");
+  const tips = ["Une chose à la fois : choisis la plus importante de la journée et laisse le reste.", "Une pause de 5 minutes toutes les heures aide la fatigue et les douleurs.", "Un coucher à heure régulière améliore le sommeil et l'énergie du lendemain.", "Après un repas, 10 minutes de marche calment la glycémie.", "Les jours de grosse fatigue, fais moins : se reposer fait partie du soin."];
+  c.push("💡 " + tips[Math.abs(dayNum(t)) % tips.length]);
+  return fold("💡 Conseils du jour", c.slice(0, 5).map((x) => `<div class="todo"><div>${x}</div></div>`).join(""), true);
 }
