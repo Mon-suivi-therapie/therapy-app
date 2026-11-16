@@ -31,8 +31,8 @@ function renderToday() {
   items.push([rows("suivi_douleur_fatigue").some((r) => r.Date === t), "Douleur, fatigue et sommeil", "df"]);
   items.push([!!humeurs()[t], "Mon humeur du jour", "df"]);
   items.push([!!ppcNuits()[t], "Appareil d'apnée du sommeil : l'ai-je utilisé cette nuit ?", "dash"]);
-  const nut = CHECKS["🥗 Nutrition"] || [], nutSaved = (cfg(2).jours || {})[t] || {}, nutFaits = nut.filter(([k]) => nutSaved[k]).length;
-  items.push([nut.length > 0 && nutFaits === nut.length, `Conseils nutrition : ${nutFaits} fait(s) sur ${nut.length}`, "health", "Mes conseils"]);
+  const nutSaved = (cfg(2).jours || {})[t] || {}, nutFaits = Object.values(CHECKS).flat().filter(([k]) => nutSaved[k]).length;
+  items.push([Object.keys(nutSaved).length > 0, `Mes conseils (nutrition, sport, kiné…) : ${nutFaits} fait(s) sur ${NB_CHECKS}`, "health", "Mes conseils"]);
   if (wd === 1 || wd === 5) {
     const pw = rows("suivi_poids").map((r) => ({ d: r.Date, k: num(r["Poids (kg)"]) })).filter((r) => r.k !== null).sort((a, b) => a.d.localeCompare(b.d)), dp = pw[pw.length - 1];
     items.push([pw.some((r) => r.d === t), "Pesée du jour (lundi et vendredi)" + (dp ? ` · dernière : ${r1(dp.k)} kg le ${fr2(dp.d)}` : ""), "health"]);
@@ -45,7 +45,7 @@ function renderToday() {
     items.push([rows("suivi_glycemie").some((r) => r.Date >= debut && r.Date <= t), wd <= 2 ? "Glycémie à jeun (jour de mesure du début de semaine)" : "Glycémie après repas (jour de mesure de fin de semaine)", "health"]);
   }
   // ordre choisi : 1 médicaments, 2 appareil d'apnée, 3 température, 4 quotidien, 5 glycémie, 6 pesée, 7 conseils nutrition, 8 douleur, 9 humeur
-  const ORDRE = [/médicaments|À prendre/, /Appareil d'apnée/, /Température|Tension/, /Mon quotidien/, /Glycémie/, /Pesée/, /Conseils nutrition/, /Douleur, fatigue/, /Mon humeur/, /Check-in/];
+  const ORDRE = [/médicaments|À prendre/, /Appareil d'apnée/, /Température|Tension/, /Mon quotidien/, /Glycémie/, /Pesée/, /Mes conseils/, /Douleur, fatigue/, /Mon humeur/, /Check-in/];
   const rang = (it) => { const i = ORDRE.findIndex((r) => r.test(it[1])); return i < 0 ? 99 : i; };
   items.sort((x, y) => rang(x) - rang(y));
   const faits = items.filter((i) => i[0]).length;
