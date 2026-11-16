@@ -31,6 +31,8 @@ function renderToday() {
   items.push([rows("suivi_douleur_fatigue").some((r) => r.Date === t), "Douleur, fatigue et sommeil", "df"]);
   items.push([!!humeurs()[t], "Mon humeur du jour", "df"]);
   items.push([!!ppcNuits()[t], "Appareil d'apnée du sommeil : l'ai-je utilisé cette nuit ?", "dash"]);
+  const nut = CHECKS["🥗 Nutrition"] || [], nutSaved = (cfg(2).jours || {})[t] || {}, nutFaits = nut.filter(([k]) => nutSaved[k]).length;
+  items.push([nut.length > 0 && nutFaits === nut.length, `Conseils nutrition : ${nutFaits} fait(s) sur ${nut.length}`, "health", "Mes conseils"]);
   if (wd === 1 || wd === 5) {
     const pw = rows("suivi_poids").map((r) => ({ d: r.Date, k: num(r["Poids (kg)"]) })).filter((r) => r.k !== null).sort((a, b) => a.d.localeCompare(b.d)), dp = pw[pw.length - 1];
     items.push([pw.some((r) => r.d === t), "Pesée du jour (lundi et vendredi)" + (dp ? ` · dernière : ${r1(dp.k)} kg le ${fr2(dp.d)}` : ""), "health"]);
@@ -46,7 +48,7 @@ function renderToday() {
 
   let h = `<h2>☀️ Aujourd'hui</h2><p class="muted" style="text-transform:capitalize">${esc(jour)}</p>${stockAlertes()}`;
   h += `${bar(faits / items.length)}<p class="muted">${faits} chose(s) faite(s) sur ${items.length}</p>`;
-  h += items.map(([ok, txt, tab]) => `<div class="todo ${ok ? "ok" : ""}"><span>${ok ? "✅" : "⬜"}</span><div>${txt}</div>${ok || tab === "today" ? "" : btn("Ouvrir", "goto", "sec", `data-t="${tab}"`)}</div>`).join("");
+  h += items.map(([ok, txt, tab, scroll]) => `<div class="todo ${ok ? "ok" : ""}"><span>${ok ? "✅" : "⬜"}</span><div>${txt}</div>${ok || tab === "today" ? "" : btn("Ouvrir", "goto", "sec", `data-t="${tab}"${scroll ? ` data-s="${scroll}"` : ""}`)}</div>`).join("");
   h += `<div class="todo"><span>🗓️</span><div>Ma routine (TDAH)</div>${btn("Ouvrir ma routine", "goto", "sec", 'data-t="tdah" data-s="Ma routine"')}</div>`;
   if (nbM) h += `<p>${btn("✅ J'ai tout pris comme d'habitude (un clic)", "todayall")}</p>`;
   else if (total && faits === items.length) h += box("ok", "🌿 Tout est fait pour aujourd'hui. Tu peux te reposer.");
