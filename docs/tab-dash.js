@@ -81,7 +81,7 @@ function renderDash() {
     const faits = total - Object.values(manq).reduce((n, m) => n + m.length, 0), first = Object.keys(manq)[0];
     h += (total ? bar(faits / total) + `<p class="muted">Prises faites aujourd'hui : ${faits} sur ${total}</p>` : "")
       + (first ? box("info", `👉 <b>Maintenant, une seule chose :</b> prendre ${esc(first)} (${manq[first][0]}), puis cocher ci-dessous.`) : tasks.length ? box("info", "👉 <b>Prochaine petite chose :</b> " + esc(tasks[0])) : box("ok", "🌿 Rien d'urgent. Tu peux te reposer."))
-      + timerBlock() + `<details><summary>📋 Voir toute la liste</summary>${liste}</details>`;
+      + `<details><summary>📋 Voir toute la liste</summary>${liste}</details>`;
   } else h += liste;
 
   if (Object.keys(manq).length) h += `<p>${btn("✅ J'ai tout pris comme d'habitude (enregistrer en un clic)", "toutpris")}</p>`;
