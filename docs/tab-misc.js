@@ -11,6 +11,7 @@ function lignesFiche(vals) {
 
   fiche.push(["💊 Traitements", Object.entries(S.meds).map(([n, i]) => `${n} : ${requis(i).join("/")}${i.heure_precise ? " (à " + i.heure_precise + ")" : ""}, ${doseActuelle(i)} cp`).concat([]).filter(Boolean)]);
   if (!fiche[fiche.length - 1][1].length) fiche[fiche.length - 1][1] = ["Aucun traitement enregistré"];
+  const pf = paliersFiche(); if (pf.length) fiche.push(["🪜 Paliers de dose et symptômes", pf]);
 
   const lg = [], g = rows("suivi_glycemie").filter((r) => r.Date >= addDays(t, -14));
   const j = g.map((r) => gv(r["Glycémie à jeun"])).filter((x) => x !== null), p = g.map((r) => gv(r["Glycémie Post-Prandiale"])).filter((x) => x !== null), mg = [];

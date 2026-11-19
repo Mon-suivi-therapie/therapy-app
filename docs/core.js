@@ -190,24 +190,44 @@ function lineChart(id, datasets, { ymin, ymax, ytitle, xnum = false, vlines = []
 const pts = (arr, fx, fy) => arr.map((r) => ({ x: fx(r), y: fy(r) })).filter((p) => p.y !== null && p.y !== undefined && !isNaN(p.y));
 
 // ---------- médicaments ----------
-function doseActuelle(info) {
-  let dose = parseInt(info.nb_cachet_par_repas ?? 1);
-  if (info.is_evolution && info.phases) {
-    try {
-      const ph = parseJ(info.phases); const p1 = Array.isArray(ph) ? ph : [];
-      const debut = info.start_date || today();
-      const duree = parseInt(p1[0]?.duration ?? 7);
-      if (diffDays(today(), debut) < duree) dose = parseInt(p1[0]?.dose ?? 1);
-      else if (p1.length > 1) dose = parseInt(p1[1]?.dose ?? 2);
-    } catch {}
-  }
-  return dose;
+// Paliers : phases = [{ dose (cp par prise), duration (jours, 9999 = définitif), moments: ["prend_matin", ...] }]
+// retour = { date, idx } : à partir de cette date, on reste définitivement au palier idx (consigne du médecin).
+const momentsGlobaux = (info) => MOMENTS.filter(([, k, d]) => info[k] ?? d).map((m) => m[1]);
+function phasesDe(info) {
+  const ph = parseJ(info.phases); return info.is_evolution && Array.isArray(ph) && ph.length ? ph : null;
 }
+// Chronologie réelle des paliers : [{ idx, debut, fin (null = en cours / définitif), dose, moments, retour }]
+function chronoPaliers(info) {
+  const ph = phasesDe(info); if (!ph) return [];
+  const out = []; let d = info.start_date || today();
+  const ret = info.retour && info.retour.date ? info.retour : null;
+  for (let i = 0; i < ph.length; i++) {
+    const dur = parseInt(ph[i].duration) || 9999, last = i === ph.length - 1 || dur >= 9999;
+    let fin = last ? null : addDays(d, dur - 1);
+    if (ret && ret.date <= d) break;
+    if (ret && (fin === null || ret.date <= fin)) fin = addDays(ret.date, -1);
+    out.push({ idx: i, debut: d, fin, dose: parseInt(ph[i].dose) || 1, moments: ph[i].moments || momentsGlobaux(info) });
+    if (fin === null) break;
+    d = addDays(fin, 1);
+  }
+  if (ret) { const p = ph[ret.idx] || ph[0]; out.push({ idx: ret.idx, debut: ret.date, fin: null, dose: parseInt(p.dose) || 1, moments: p.moments || momentsGlobaux(info), retour: true }); }
+  return out;
+}
+function palierAuJour(info, date = today()) {
+  const c = chronoPaliers(info); if (!c.length) return null;
+  return c.find((p) => p.debut <= date && (p.fin === null || p.fin >= date)) || (date < c[0].debut ? c[0] : c[c.length - 1]);
+}
+function doseActuelle(info, date = today()) {
+  const p = palierAuJour(info, date);
+  return p ? p.dose : parseInt(info.nb_cachet_par_repas ?? 1) || 1;
+}
+const parJourTxt = (p) => p.dose * p.moments.length;
+const momentsTxt = (keys) => MOMENTS.filter((m) => keys.includes(m[1])).map((m) => m[0].toLowerCase()).join(" + ");
 function momentPourHeure(hhmm) {
   const h = parseInt(String(hhmm).slice(0, 2)); if (isNaN(h)) return "prend_soir";
   return h < 11 ? "prend_matin" : h < 15 ? "prend_midi" : h < 21 ? "prend_soir" : "prend_coucher";
 }
-const requis = (info) => MOMENTS.filter(([, k, d]) => info[k] ?? d).map((m) => m[0]);
+const requis = (info, date = today()) => { const p = palierAuJour(info, date), ks = p ? p.moments : momentsGlobaux(info); return MOMENTS.filter((m) => ks.includes(m[1])).map((m) => m[0]); };
 function regles() { return [...new Set(rows("cycle_temperature").filter((r) => r["Cycle Status"] === "🩸 Début des Règles").map((r) => r.Date))].sort(); }
 function cycleMoyen() {
   const rg = regles(), l = [];

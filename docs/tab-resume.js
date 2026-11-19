@@ -49,7 +49,7 @@ function moisStats(ym) {
     const parJour = {}; toutes.forEach((r) => { if (inM(r)) (parJour[r.Date] = parJour[r.Date] || []).push(r); });
     for (let d = dep; d <= fin; d = addDays(d, 1)) {
       for (const [nom, info] of Object.entries(S.meds)) {
-        const req = requis(info); if (info.start_date && info.start_date > d) continue;
+        const req = requis(info, d); if (info.start_date && info.start_date > d) continue;
         attendu += req.length;
         const txt = (parJour[d] || []).filter((r) => r["Médicament"] === nom).map((r) => r.Prise).join(" ");
         pris += req.filter((l) => txt.includes(l)).length;

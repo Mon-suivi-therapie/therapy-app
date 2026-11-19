@@ -186,6 +186,7 @@ function symptomesBlock() {
   const t = today(), d = S.syDate && S.syDate <= t ? S.syDate : t, x = syJours()[d] || {}, on = x.s || [];
   let h = `<h3>🤧 J'ai un symptôme aujourd'hui</h3><p class="muted">Coche ce que tu ressens, même un petit symptôme. Ça sert à voir ce qui revient et à le dire à ton médecin.</p>
   ${dateField("syDate", "🗓️ Jour", d, t)}
+  ${paliersTag(d).length ? box("info", "💊 Ce jour-là : " + paliersTag(d).map(esc).join(" · ") + changementsProches(d)) : ""}
   ${SY_GROUPES.map(([g, L]) => `<p><b>${g}</b></p>${chipsP("sy", L, on)}`).join("")}
   ${field("syAutre", "Autre symptôme (écris-le)", "text", x.autre || "")}
   ${sel("syForce", "Intensité globale", SY_FORCE, x.force || "Léger")}
@@ -195,9 +196,27 @@ function symptomesBlock() {
     const c = {}; recent.forEach((k) => (J[k].s || []).forEach((v) => (c[v] = (c[v] || 0) + 1)));
     const top = Object.entries(c).sort((a, b) => b[1] - a[1]).slice(0, 5);
     if (top.length) h += `<p class="muted">🔎 Les plus fréquents sur 30 jours : ${top.map(([v, n]) => `${esc(v)} (${n} jour${n > 1 ? "s" : ""})`).join(", ")}</p>`;
-    h += fold(`📋 Mes symptômes récents (${recent.length} jour${recent.length > 1 ? "s" : ""})`, recent.slice(0, 20).map((k) => `<div class="jn"><b>${fr(k)}</b> <span class="tag">${esc(J[k].force || "")}</span><div>${esc([...(J[k].s || []), J[k].autre].filter(Boolean).join(", "))}</div></div>`).join(""));
+    h += fold(`📋 Mes symptômes récents (${recent.length} jour${recent.length > 1 ? "s" : ""})`, recent.slice(0, 20).map((k) => `<div class="jn"><b>${fr(k)}</b> <span class="tag">${esc(J[k].force || "")}</span><div>${esc([...(J[k].s || []), J[k].autre].filter(Boolean).join(", "))}</div>${paliersTag(k).length ? `<div class="muted">💊 ${esc(paliersTag(k).join(" · "))}</div>` : ""}</div>`).join(""));
   }
   return h;
+}
+// « ⚠️ changement de palier il y a 2 jours » si un palier a changé dans les 7 jours avant ce jour
+function changementsProches(d) {
+  const L = [];
+  Object.entries(S.meds).forEach(([nom, info]) => chronoPaliers(info).forEach((p, i) => {
+    if (i === 0 && !p.retour) return;
+    const e = diffDays(d, p.debut); if (e < 0 || e > 7) return;
+    L.push(`${nom} : ${p.retour ? "retour au palier " + (p.idx + 1) : "passage au palier " + (p.idx + 1)} (${parJourTxt(p)} cp/jour) ${e === 0 ? "ce jour-là" : "il y a " + e + " jour(s)"}, le ${fr(p.debut)}`);
+  }));
+  return L.length ? "<br>🔄 <b>Changement de dose récent</b> : " + L.map(esc).join(" · ") + ". Un symptôme peut venir de ce changement : note-le et regarde le tableau des paliers dans l'onglet 💊 Traitement." : "";
+}
+// historique des paliers pour la fiche médecin
+function paliersFiche() {
+  const t = today();
+  return Object.entries(S.meds).flatMap(([nom, info]) => chronoPaliers(info).filter((p) => p.debut <= t).map((p) => {
+    const s = statsPalier(p);
+    return `${nom} — ${palierNom(p).replace("↩️ ", "")} : ${palierDesc(p)}, du ${fr(p.debut)} ${p.fin && p.fin < t ? "au " + fr(p.fin) : "à aujourd'hui"} — symptômes ${s.avec} j / ${s.n}${s.top.length ? " (" + s.top.map(([k, v]) => `${k} ${v} j`).join(", ") + ")" : ""}`;
+  }));
 }
 function syFicheLignes() {
   const t = today(), J = syJours(), R = Object.keys(J).filter((k) => k >= addDays(t, -30));
