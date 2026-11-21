@@ -2,10 +2,10 @@
 S.enceinte = false; S.bilanVoir = "";
 
 const CHECKS = {
-  "🥗 Nutrition": [["n1", "J'ai commencé mes repas par les légumes"], ["n2", "J'ai fait 3 repas réguliers"], ["n3", "Pas de boisson sucrée aujourd'hui"], ["n4", "Féculents complets en portion modérée"], ["n5", "J'ai pris une collation équilibrée (fruit + protéines)"]],
-  "🚶 Sport et marche": [["s1", "Marche de 10 à 15 min après le repas"], ["s2", "Activité modérée adaptée à mes douleurs"], ["s3", "Renforcement musculaire léger (2 fois par semaine)"], ["s4", "Je me suis levée régulièrement (pas assise 1 h d'affilée)"]],
-  "🧘 Kiné et fibromyalgie": [["k1", "Séance de kiné ou exercices du kiné"], ["k2", "Étirements doux 5 à 10 minutes"], ["k3", "Chaleur (bouillotte, douche ou bain chaud)"], ["k4", "J'ai fait des pauses et géré mon énergie"], ["k5", "Respiration ou relaxation 5 minutes"], ["k6", "Bonne nuit de sommeil (7 à 9 h)"]],
-  "💧 Autres": [["a1", "J'ai bu environ 1,5 L d'eau"], ["a2", "J'ai mesuré ma glycémie (si demandé par mon médecin)"], ["a3", "J'ai pris mon traitement et mes vitamines prescrites"]],
+  "🥗 Nutrition": [["n1", "J'ai commencé mon repas par les légumes le midi"], ["n1s", "J'ai commencé mon repas par les légumes le soir"], ["n2", "J'ai fait 3 repas réguliers"], ["n3", "Pas de boisson sucrée aujourd'hui"], ["n4", "Féculents complets en portion modérée le midi"], ["n4s", "Féculents complets en portion modérée le soir"]],
+  "🚶 Sport et marche": [["s1", "Marche de 10 à 15 min après le repas"], ["s4", "Je me suis levée régulièrement (pas assise 1 h d'affilée)"]],
+  "🧘 Kiné et fibromyalgie": [["k1", "Séance de kiné ou exercices du kiné"], ["k3", "Chaleur (bouillotte, douche ou bain chaud), uniquement les jours de douleur"], ["k4", "J'ai fait des pauses et géré mon énergie"], ["k6", "Bonne nuit de sommeil (7 à 9 h)"]],
+  "💧 Autres": [["a1", "J'ai bu environ 1,5 L d'eau"], ["a2", "J'ai mesuré ma glycémie (si demandé par mon médecin) : le lundi ou mardi, et le vendredi ou samedi"], ["a3", "J'ai pris mon traitement et mes vitamines prescrites"]],
 };
 const NB_CHECKS = Object.values(CHECKS).flat().length;
 const gv = (s) => num(String(s).replace(" g/L", ""));
@@ -130,7 +130,7 @@ function renderConseils() {
   const nbf = Object.values(CHECKS).flat().filter(([k]) => saved[k]).length;
   h += `<div id="kBar">${bar(nbf / NB_CHECKS)}<p class="muted">${nbf} conseil(s) fait(s) sur ${NB_CHECKS} le ${jour}</p></div>${btn("💾 Enregistrer mes cases", "savechk")}`;
   const tj = cfg(2).jours || {};
-  if (Object.keys(tj).length) h += `<h4>📊 Mes derniers jours</h4>${table(["Date", "Conseils faits", "Sur"], Object.keys(tj).sort().reverse().slice(0, 14).map((d) => ({ Date: d, "Conseils faits": Object.values(tj[d]).filter(Boolean).length, Sur: NB_CHECKS })))}`;
+  if (Object.keys(tj).length) h += `<h4>📊 Mes derniers jours</h4>${table(["Date", "Conseils faits", "Sur"], Object.keys(tj).sort().reverse().slice(0, 14).map((d) => ({ Date: d, "Conseils faits": Object.values(CHECKS).flat().filter(([k]) => tj[d][k]).length, Sur: NB_CHECKS })))}`;
   return h + `<p class="muted">Ces conseils sont généraux. Ton médecin, ta sage-femme, ton kiné ou ta diététicienne les adaptent à ton cas.</p>`;
 }
 
