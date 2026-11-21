@@ -6,17 +6,36 @@ const RESULTATS_TEST = [
   "🥚 Pic LH (positif) : ligne test aussi foncée ou plus foncée que le contrôle",
 ];
 
+// Détection de l'ovulation sur le cycle EN COURS (depuis les dernières règles), méthode symptothermique :
+// - ligne de base = la plus haute des 6 températures d'avant, en ignorant UNE valeur isolée (mauvaise nuit, heure différente…)
+// - confirmée : 3 températures au-dessus de la ligne, la 3e au moins 0,2 °C plus haut (ou une 4e au-dessus) ;
+//   une seule baisse sous la ligne est tolérée dans la série
+// - probable : la montée a commencé (2 températures au-dessus) mais il faut encore 1 ou 2 matins
 function ovulationEstimee() {
-  const c = rows("cycle_temperature").map((r) => ({ d: r.Date, t: num(r["Température"]) })).filter((r) => r.t !== null).sort((a, b) => a.d.localeCompare(b.d));
-  let hausse = null;
-  if (c.length >= 9) {
-    for (let i = 6; i < c.length - 2; i++) {
-      const base = Math.max(...c.slice(i - 6, i).map((x) => x.t));
-      if (c[i].t > base && c[i + 1].t > base && c[i + 2].t >= base + 0.2) hausse = c[i].d;
+  const all = rows("cycle_temperature").map((r) => ({ d: r.Date, t: num(r["Température"]) })).filter((r) => r.t !== null && r.t > 34 && r.t < 39).sort((a, b) => a.d.localeCompare(b.d));
+  const rg = regles().filter((d) => d <= today()), debut = rg.length ? rg[rg.length - 1] : (all.length ? all[0].d : today());
+  const c = all.filter((r) => r.d >= debut);
+  const out = { n: c.length, debut, statut: null, hausse: null, ovul: null, ovulFin: null, base: null, hauts: 0 };
+  if (c.length < 7) return out;
+  let prob = null;
+  for (let i = 6; i < c.length; i++) {
+    const prev = c.slice(i - 6, i).map((x) => x.t).sort((a, b) => b - a), base = prev[1];
+    if (c[i].t <= base || c[i - 1].t > base) continue; // on cherche le 1er matin qui passe au-dessus
+    let hauts = 0, baisses = 0, ok = false;
+    for (let j = i; j < c.length; j++) {
+      if (c[j].t > base) { hauts++; if ((hauts >= 3 && c[j].t >= base + 0.2) || hauts >= 4) { ok = true; break; } }
+      else if (++baisses > 1 || j === i) break;
     }
+    const res = { hausse: c[i].d, base, hauts, basDernier: c[i - 1].d };
+    if (ok) { prob = { ...res, statut: "confirmée" }; break; }
+    if (hauts >= 2 && baisses === 0 && !prob) prob = { ...res, statut: "probable" };
   }
-  return { n: c.length, hausse, ovul: hausse ? addDays(hausse, -1) : null };
+  if (!prob) return out;
+  // l'ovulation a lieu en général entre le dernier matin bas et la veille du 1er matin haut
+  const fin = addDays(prob.hausse, -1);
+  return { ...out, statut: prob.statut, hausse: prob.hausse, base: prob.base, hauts: prob.hauts, ovul: prob.basDernier, ovulFin: fin > prob.basDernier ? fin : null };
 }
+const ovulTxt = (o) => (o.ovulFin ? `entre le <b>${fr(o.ovul)}</b> et le <b>${fr(o.ovulFin)}</b>` : `vers le <b>${fr(o.ovul)}</b>`);
 
 function renderCycleEssai() {
   const cyc = rows("cycle_temperature");
@@ -73,25 +92,36 @@ function renderCycleEssai() {
     <h3>🔮 Analyse de ton Cycle &amp; Fertilité SOPK</h3>`;
     const o = ovulationEstimee();
     h += `<h4>🌡️ Ovulation estimée selon ta courbe</h4>`;
-    if (o.ovul) h += box("ok", `🥚 Hausse de température détectée à partir du ${fr(o.hausse)}. Ovulation probable vers le <b>${fr(o.ovul)}</b> (à 1 jour près).`);
-    else if (o.n < 9) h += box("info", `Il faut au moins 9 températures enregistrées pour détecter une hausse. Tu en as ${o.n}.`);
-    else h += box("info", "Pas de hausse nette détectée pour le moment. Continue à prendre ta température chaque matin.");
+    const jc = (d) => diffDays(d, o.debut) + 1;
+    if (o.statut === "confirmée") {
+      const jh = diffDays(today(), o.hausse) + 1, regMin = addDays(o.hausse, 10), regMax = addDays(o.hausse, 15), test = addDays(o.hausse, 16);
+      h += box("ok", `🥚 <b>Ovulation confirmée par ta courbe</b> : elle a eu lieu ${ovulTxt(o)} (jour ${jc(o.ovul)}${o.ovulFin ? "-" + jc(o.ovulFin) : ""} de ton cycle).<br>
+      🌡️ Ta température est passée au-dessus de ${String(o.base.toFixed(2)).replace(".", ",")} °C le ${fr(o.hausse)} et y reste depuis (${jh} jour(s) de phase haute).<br>
+      🩸 Règles attendues entre le <b>${fr(regMin)}</b> et le <b>${fr(regMax)}</b> : la température redescend en général juste avant.<br>
+      🧪 Si ta température reste haute et que tes règles ne sont pas venues le <b>${fr(test)}</b>, fais un test de grossesse.`);
+    } else if (o.statut === "probable") h += box("info", `🌡️ <b>Montée de température en cours</b> depuis le ${fr(o.hausse)} : l'ovulation a peut-être eu lieu ${ovulTxt(o)}. Il faut encore ${o.hauts >= 3 ? "1 matin" : "1 ou 2 matins"} au-dessus de ${String(o.base.toFixed(2)).replace(".", ",")} °C pour la confirmer.`);
+    else if (o.n < 7) h += box("info", `Depuis tes dernières règles (${fr(o.debut)}), il faut au moins 7 températures pour voir une montée. Tu en as ${o.n}.`);
+    else h += box("info", `Pas encore de montée nette depuis tes dernières règles (${fr(o.debut)}). Continue à prendre ta température chaque matin, au réveil, à la même heure. Avec un SOPK, l'ovulation peut arriver tard.`);
+    h += `<p class="muted">Comment l'appli décide : elle compare chaque matin aux 6 matins d'avant (en ignorant une valeur isolée). L'ovulation est confirmée quand 3 matins de suite sont plus hauts, dont le 3e d'au moins 0,2 °C. Une mesure manquante ou une petite baisse isolée sont tolérées.</p>`;
 
     const tri = cyc.filter((r) => num(r["Température"]) !== null).sort((a, b) => a.Date.localeCompare(b.Date));
     const lim = addDays(today(), -5);
     const pic = tests.some((r) => r.Date >= lim && String(r["Résultat"]).startsWith("🥚 Pic"));
     const testRecent = tri.slice(-5).some((r) => r["Cycle Status"] === "🥚 Test d'Ovulation Positif") || pic;
     const rapRecent = tri.slice(-3).some((r) => r["Rapport Sexuel"] === "Oui");
-    const rap5 = tri.slice(-5).some((r) => r["Rapport Sexuel"] === "Oui");
-    let chance = ["10% - 15%", "Phase standard / d'attente"];
-    if (testRecent && rapRecent) chance = ["85% - 95%", "Optimale (Rapport + Test OK)"];
-    else if (o.ovul && rap5) chance = ["60% - 75%", "Très bonne (Hausse thermique validée)"];
+    // rapports placés par rapport à l'ovulation repérée sur la courbe (les spermatozoïdes vivent jusqu'à 5 jours)
+    const rapEntre = (a, b) => cyc.some((r) => r["Rapport Sexuel"] === "Oui" && r.Date >= a && r.Date <= b);
+    let chance = ["—", "Phase d'attente"];
+    if (o.statut === "confirmée" && rapEntre(addDays(o.ovul, -2), o.ovulFin || o.ovul)) chance = ["20% - 30%", "Rapport pendant les jours les plus fertiles"];
+    else if (o.statut === "confirmée" && rapEntre(addDays(o.ovul, -5), addDays(o.ovul, -3))) chance = ["5% - 15%", "Rapport quelques jours avant l'ovulation"];
+    else if (o.statut === "confirmée") chance = ["Faibles", "Pas de rapport noté pendant les jours fertiles"];
+    else if (testRecent && rapRecent) chance = ["20% - 30%", "Rapport au moment du pic de LH"];
     h += `<div class="metrics">${metric("Chances de conception estimées", chance[0] + `<br><small>${chance[1]}</small>`)}</div>`;
 
     h += `<h4>📅 Mon Calendrier Prédictif du Cycle</h4>`;
     if (rg.length) {
       const der = rg[rg.length - 1]; let pr, df, ff, jt;
-      if (o.ovul) { pr = addDays(o.ovul, 14); df = addDays(o.ovul, -4); ff = addDays(o.ovul, 1); jt = addDays(o.ovul, 14); }
+      if (o.statut === "confirmée") { pr = addDays(o.hausse, 13); jt = addDays(o.hausse, 16); const cm = cycleMoyen().val; df = addDays(pr, cm - 19); ff = addDays(pr, cm - 13); }
       else { pr = addDays(der, 35); df = addDays(pr, -18); ff = addDays(pr, -14); jt = pr; }
       h += `<ul><li>🩸 <b>Prochaines règles estimées :</b> autour du <b>${fr(pr)}</b>.</li><li>🥚 <b>Prochaine fenêtre de fertilité :</b> du <b>${fr(df)}</b> au <b>${fr(ff)}</b>.</li><li>🧪 <b>Date idéale test de grossesse :</b> à partir du <b>${fr(jt)}</b>.</li></ul>`;
     } else h += `<p class="muted">💡 Ajoute un événement « 🩸 Début des Règles » pour activer les prédictions.</p>`;
@@ -124,7 +154,12 @@ function afterCycle() {
   const groups = {};
   cyc.forEach((r) => { const n = nOf(r.d); (groups[n] = groups[n] || []).push(r); });
   const ds = Object.entries(groups).map(([n, a], i) => ({ label: label(+n), data: a.map((r) => ({ x: dayNum(r.d), y: r.t })), borderColor: PALETTE[i % 8], backgroundColor: PALETTE[i % 8], tension: 0, pointRadius: 3 }));
-  lineChart("chCycle", ds, { ymin: 35, ymax: 37.5, ytitle: "°C Basale", vlines: rg.map((d) => ({ x: dayNum(d), label: "🩸" })) });
+  const o = ovulationEstimee(), vl = rg.map((d) => ({ x: dayNum(d), label: "🩸" }));
+  if (o.statut) {
+    vl.push({ x: (dayNum(o.ovul) + dayNum(o.ovulFin || o.ovul)) / 2, label: "🥚" });
+    ds.push({ label: "Ligne de base (" + String(o.base.toFixed(2)).replace(".", ",") + " °C)", data: [{ x: dayNum(o.debut), y: o.base }, { x: dayNum(cyc[cyc.length - 1].d), y: o.base }], borderColor: "#e377c2", backgroundColor: "#e377c2", borderDash: [6, 4], pointRadius: 0, borderWidth: 1.5 });
+  }
+  lineChart("chCycle", ds, { ymin: 35, ymax: 37.5, ytitle: "°C Basale", vlines: vl });
   const cmp = Object.entries(groups).filter(([n]) => +n >= 1);
   if (cmp.length >= 2) {
     $("chCmpWrap").innerHTML = `<details><summary>🔍 Comparer mes cycles (superposés : jour 1 = début des règles)</summary><div class="chart"><canvas id="chCmp"></canvas></div></details>`;
