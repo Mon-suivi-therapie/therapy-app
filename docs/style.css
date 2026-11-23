@@ -165,3 +165,6 @@ details.secfold:not([open])>summary::before{transform:rotate(-90deg)}
 
 #nav2{position:static;margin:0 0 6px;padding:0 0 6px;background:none}#nav2 button{font-size:.82rem;padding:6px 13px;background:var(--bg)}
 #nav2[hidden]{display:none}
+#cycBadge:empty{display:none}
+.cycbadge{display:inline-block;margin:.3rem auto .6rem;padding:8px 18px;border-radius:16px;background:linear-gradient(135deg,var(--rose-l),var(--mauve-l));border:1px solid var(--rose);line-height:1.45;font-size:.95rem;max-width:100%}
+.cycbadge b{color:var(--rose-d);font-size:1.15rem}

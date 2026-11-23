@@ -35,6 +35,29 @@ function ovulationEstimee() {
   const fin = addDays(prob.hausse, -1);
   return { ...out, statut: prob.statut, hausse: prob.hausse, base: prob.base, hauts: prob.hauts, ovul: prob.basDernier, ovulFin: fin > prob.basDernier ? fin : null };
 }
+// ---------- jour du cycle en temps réel (bandeau en haut de chaque page) ----------
+function cycleBadgeHtml() {
+  if (!S.set || ![PARCOURS[0], PARCOURS[2]].includes(S.set.parcours)) return "";
+  const t = today(), rg = regles().filter((d) => d <= t); if (!rg.length) return "";
+  const debut = rg[rg.length - 1], j = diffDays(t, debut) + 1, cm = cycleMoyen().val;
+  const finR = rows("cycle_temperature").filter((r) => r["Cycle Status"] === "❌ Fin des Règles" && r.Date >= debut).map((r) => r.Date).sort()[0];
+  const o = ovulationEstimee();
+  let phase;
+  if (finR ? t <= finR : j <= 5) phase = "🩸 Règles";
+  else if (o.statut === "confirmée") {
+    const jh = diffDays(t, o.hausse) + 1, test = addDays(o.hausse, 16);
+    phase = t >= test ? `🧪 Phase haute depuis ${jh} jours : règles en retard, fais un test de grossesse` : jh >= 11 ? `🌙 Après l'ovulation (phase haute, jour ${jh}) : règles attendues bientôt` : `🌙 Après l'ovulation (phase haute, jour ${jh})`;
+  } else if (o.statut === "probable") phase = "🌡️ Montée de température en cours : ovulation peut-être passée";
+  else if (j >= 10 && j <= Math.max(cm - 10, 16)) phase = "🥚 Période des tests d'ovulation";
+  else if (j > cm + 7) phase = `⏳ Cycle plus long que d'habitude (moyenne ${cm} j), pas encore d'ovulation vue sur la courbe`;
+  else phase = "🌱 Avant l'ovulation";
+  return `<div class="cycbadge"><b>Jour ${j}</b> de ton cycle <span class="muted">(depuis le ${fr2(debut)})</span><br>${phase}</div>`;
+}
+function majCycleBadge() { const el = $("cycBadge"); if (!el) return; try { el.innerHTML = cycleBadgeHtml(); } catch (e) { el.innerHTML = ""; } }
+// mise à jour automatique au changement de jour (minuit, heure de Paris) et au retour sur l'appli
+S.badgeJour = today();
+setInterval(() => { if (today() !== S.badgeJour) { S.badgeJour = today(); majCycleBadge(); } }, 60000);
+document.addEventListener("visibilitychange", () => { if (!document.hidden) majCycleBadge(); });
 const ovulTxt = (o) => (o.ovulFin ? `entre le <b>${fr(o.ovul)}</b> et le <b>${fr(o.ovulFin)}</b>` : `vers le <b>${fr(o.ovul)}</b>`);
 
 function renderCycleEssai() {

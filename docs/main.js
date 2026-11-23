@@ -108,6 +108,7 @@ function render() {
   try { cur[3] && cur[3](); } catch (e) { console.error(e); }
   window.scrollTo(0, y);
   renderSide();
+  majCycleBadge();
   if (keep && keep.size) restoreForm(keep);
 }
 
