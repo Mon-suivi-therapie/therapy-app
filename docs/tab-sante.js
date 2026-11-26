@@ -115,7 +115,8 @@ function ppcMsg(use, h, iah, fu) {
   if (use === "Non") m.push(["warn", "🌙 Pas d'appareil cette nuit. Essaie de le remettre dès ce soir : il ne protège que quand tu le portes. S'il te gêne, dis-le à ton prestataire, il existe des réglages et des masques différents."]);
   else {
     if (h !== null && !isNaN(h)) {
-      if (h >= 7) m.push(["ok", `🎉 <b>${fmtH(h)}</b> d'utilisation : très bien, l'appareil a couvert presque toute ta nuit.`]);
+      if (h >= 8) m.push(["ok", `🎉 <b>${fmtH(h)}</b> d'utilisation : excellent, l'appareil a couvert toute ta nuit.`]);
+      else if (h >= 7) m.push(["ok", `🎉 <b>${fmtH(h)}</b> d'utilisation : très bien, l'appareil a couvert presque toute ta nuit.`]);
       else if (h >= 4) m.push(["ok", `👍 <b>${fmtH(h)}</b> d'utilisation : c'est au-dessus de 4 h, le minimum habituellement demandé. Plus tu en portes, mieux c'est.`]);
       else m.push(["warn", `🌙 <b>${fmtH(h)}</b> d'utilisation : en dessous de 4 h, le traitement agit peu. Si tu l'enlèves la nuit, note pourquoi (gêne, fuites, réveil) pour en parler au prestataire.`]);
     }
