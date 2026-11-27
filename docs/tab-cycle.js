@@ -68,24 +68,30 @@ function courbeDuJour() {
   const avant = all.filter((r) => r.d < t), prev = avant[avant.length - 1];
   const dl = prev ? auj.t - prev.t : null;
   const ev = dl === null ? "" : Math.abs(dl) < 0.05 ? `stable par rapport au ${fr2(prev.d)}` : `${dl > 0 ? "+" : "−"}${String(Math.abs(dl).toFixed(2)).replace(".", ",")} °C par rapport au ${fr2(prev.d)}`;
-  let s = `🌡️ <b>Ce matin : ${deg(auj.t)}</b>${ev ? " (" + ev + ")" : ""}.<br>`, typ = "info";
   const o = ovulationEstimee(), rg = regles().filter((d) => d <= t), debut = rg.length ? rg[rg.length - 1] : null;
   const finR = debut ? rows("cycle_temperature").filter((r) => r["Cycle Status"] === "❌ Fin des Règles" && r.Date >= debut).map((r) => r.Date).sort()[0] : null;
-  if (auj.t >= 37.5) { s += "🤒 C'est très haut : si tu as de la fièvre ou es malade, cette mesure peut fausser la courbe. Note-le dans « Notes particulières »."; typ = "warn"; }
+  const jc = debut ? diffDays(t, debut) + 1 : null, cm = cycleMoyen().val;
+  let titre, detail = "", typ = "info"; // titre = la phrase courte en gros, detail = l'explication
+  if (auj.t >= 37.5) { titre = "🤒 Très haut : peut-être de la fièvre"; detail = "Si tu es malade, cette mesure peut fausser la courbe. Note-le dans « Notes particulières »."; typ = "warn"; }
   else if (o.statut === "confirmée") {
-    const jh = diffDays(t, o.hausse) + 1, base = deg(o.base);
-    if (auj.t > o.base) { s += `🌙 Ta température reste au-dessus de la ligne de base (${base}) : tu es au <b>jour ${jh} de la phase haute</b>, après l'ovulation.`; if (jh >= 16) { s += " 🧪 Elle dure depuis 16 jours ou plus sans règles : fais un test de grossesse."; typ = "ok"; } else if (jh >= 11) s += " Si elle redescend dans les prochains jours, tes règles arriveront bientôt."; }
-    else if (jh >= 10) { s += `📉 Ta température redescend sous la ligne de base (${base}) : tes règles arrivent probablement dans 1 à 2 jours.`; typ = "warn"; }
-    else s += `↘️ Petite baisse sous la ligne de base (${base}). Une seule baisse est fréquente (mauvaise nuit, heure différente) : regarde demain matin.`;
+    const jh = diffDays(t, o.hausse) + 1;
+    if (auj.t > o.base) {
+      if (jh >= 16) { titre = "🧪 Toujours en haut depuis " + jh + " jours : fais un test de grossesse !"; detail = "Une phase haute de 16 jours ou plus sans règles est souvent un bon signe 🤞."; typ = "ok"; }
+      else { titre = "📈 Toujours en haut : encore une chance d'être enceinte 🤞"; detail = `Jour ${jh} de la phase haute, après l'ovulation.${jh >= 11 ? " Si elle reste haute après le " + fr2(addDays(o.hausse, 15)) + ", fais un test." : ""}`; typ = "ok"; }
+    } else if (jh >= 10) { titre = "📉 En baisse : les règles vont sûrement arriver"; detail = "Dans 1 à 2 jours en général. Ce sera le jour 1 d'un nouveau cycle : note-le avec « 🩸 Début des Règles »."; typ = "warn"; }
+    else { titre = "↘️ Petite baisse, pas d'inquiétude"; detail = "Une seule baisse arrive souvent (mauvaise nuit, heure différente). Regarde demain matin."; }
   } else if (o.statut === "probable") {
-    s += auj.t > o.base ? `📈 Ta température est au-dessus de la ligne de base (${deg(o.base)}). Encore ${o.hauts >= 3 ? "1 matin" : "1 ou 2 matins"} comme ça et l'ovulation sera confirmée.` : `↘️ Ta température repasse sous la ligne de base (${deg(o.base)}) : la montée n'est pas encore confirmée. Continue chaque matin.`;
-  } else if (debut && (finR ? t <= finR : diffDays(t, debut) < 5)) s += "🩸 Tu es pendant tes règles : la température est souvent un peu irrégulière ces jours-là, c'est normal.";
+    if (auj.t > o.base) { titre = "📈 Ça monte : l'ovulation vient sûrement de passer"; detail = `Encore ${o.hauts >= 3 ? "1 matin" : "1 ou 2 matins"} en haut pour la confirmer.`; typ = "ok"; }
+    else { titre = "↘️ Redescendue : la montée n'est pas encore sûre"; detail = "Continue chaque matin, à la même heure."; }
+  } else if (debut && (finR ? t <= finR : jc <= 5)) { titre = "🩸 Règles : un nouveau cycle commence"; detail = "La température est souvent un peu irrégulière ces jours-là, c'est normal."; }
   else {
     const six = avant.filter((r) => !debut || r.d >= debut).slice(-6).map((r) => r.t).sort((a, b) => b - a);
-    if (six.length >= 6 && auj.t > six[1]) { s += `📈 Plus haute que tes 6 matins d'avant (ligne de base ${deg(six[1])}) : c'est peut-être <b>le début de la montée</b> après l'ovulation. Il faut 2 ou 3 matins hauts de plus pour le confirmer.`; typ = "ok"; }
-    else s += `🌱 Tu es dans la <b>phase basse</b> (avant l'ovulation) : la température reste dans tes valeurs habituelles.${six.length >= 6 ? ` Une montée au-dessus de ${deg(six[1])} sur plusieurs matins montrera l'ovulation.` : ""}`;
+    if (six.length >= 6 && auj.t > six[1]) { titre = "📈 Ça monte : l'ovulation vient peut-être d'avoir lieu"; detail = "Plus haute que tes 6 matins d'avant. Il faut 2 ou 3 matins en haut pour le confirmer."; typ = "ok"; }
+    else if (jc && jc >= 10 && jc <= Math.max(cm - 10, 16)) { titre = "🥚 Encore en bas : l'ovulation peut arriver bientôt"; detail = "C'est la période des tests d'ovulation et des rapports 💞. Quand la température montera, l'ovulation sera passée."; typ = "ok"; }
+    else if (jc && jc > cm + 7) { titre = "⏳ Toujours en bas : cycle plus long que d'habitude"; detail = "Avec un SOPK, l'ovulation peut arriver tard. Continue la courbe et les tests."; }
+    else { titre = "🌱 En bas : avant l'ovulation"; detail = "La température reste dans tes valeurs habituelles."; }
   }
-  return box(typ, s);
+  return box(typ, `<span style="font-size:1.15rem"><b>${titre}</b></span><br>🌡️ Ce matin : <b>${deg(auj.t)}</b>${ev ? " (" + ev + ")" : ""}. ${detail}`);
 }
 const ovulTxt = (o) => (o.ovulFin ? `entre le <b>${fr(o.ovul)}</b> et le <b>${fr(o.ovulFin)}</b>` : `vers le <b>${fr(o.ovul)}</b>`);
 
