@@ -57,6 +57,7 @@ function renderToday() {
   if (nbM) h += `<p>${btn("✅ J'ai tout pris comme d'habitude (un clic)", "todayall")}</p>`;
   else if (total && faits === items.length) h += box("ok", "🌿 Tout est fait pour aujourd'hui. Tu peux te reposer.");
 
+  h += veilleBlock(t);
   h += conseilsDuJour(t, wd);
   const rdv = rows("rdv_medicaux").filter((r) => r.Date >= t && !["✅ Effectué", "❌ Annulé"].includes(r.Statut)).sort((a, b) => (a.Date + (a.Heure || "")).localeCompare(b.Date + (b.Heure || ""))).slice(0, 3);
   const nbq = qrEnAttente().length;
@@ -74,6 +75,24 @@ function renderToday() {
   h += "<hr>" + (sj && (sj.s || sj.autre) ? box("info", "🤧 Symptômes notés aujourd'hui : " + esc([...(sj.s || []), sj.autre].filter(Boolean).join(", "))) : "") + fold("🤧 J'ai un symptôme aujourd'hui", symptomesBlock(), false) + fold("❓ Mes questions pour le médecin" + (nbq ? ` (${nbq})` : ""), questionsRapides(false), nbq > 0 && rdv.some((r) => diffDays(r.Date, t) <= 3));
   h += `<p class="muted">Besoin d'écrire autre chose ? Va dans <b>📝 Mon journal</b>.</p>`;
   return h;
+}
+
+// ---------- 🕘 la veille : ce que j'ai oublié de noter hier ----------
+function veilleBlock(t) {
+  const y = addDays(t, -1), { out: manq, total } = manquants(y), nbM = Object.values(manq).reduce((a, m) => a + m.length, 0);
+  const it = []; // [fait, texte, onglet, scroll]
+  if (total) it.push([nbM === 0, nbM === 0 ? "Médicaments : tout est enregistré" : "Médicaments non enregistrés : " + Object.entries(manq).map(([n, m]) => `<b>${esc(n)}</b> (${esc(m.join(", "))})`).join(" · "), "dash"]);
+  it.push([!!ppcNuits()[y], `Appareil d'apnée (nuit du ${fr2(addDays(y, -1))} au ${fr2(y)})`, "dash"]);
+  if (S.set.parcours === PARCOURS[0]) it.push([rows("cycle_temperature").some((r) => r.Date === y), "Température basale", "cycle"]);
+  it.push([rows("suivi_douleur_fatigue").some((r) => r.Date === y), "Douleur, fatigue et sommeil", "df"]);
+  it.push([!!humeurs()[y], "Humeur", "df"]);
+  const ns = (cfg(2).jours || {})[y] || {};
+  it.push([Object.keys(ns).length > 0, `Mes conseils (${Object.values(CHECKS).flat().filter(([k]) => ns[k]).length} fait(s) sur ${NB_CHECKS})`, "health", "Mes conseils"]);
+  const manque = it.filter((i) => !i[0]).length;
+  let h = `<p class="muted">Tu as oublié de noter quelque chose hier ? Le bouton « Remplir pour hier » ouvre la page déjà réglée sur le ${fr(y)}.</p>`;
+  h += it.map(([ok, txt, tab, scroll]) => `<div class="todo ${ok ? "ok" : ""}"><span>${ok ? "✅" : "⬜"}</span><div>${txt}</div>${ok ? "" : btn("Remplir pour hier", "goto", "sec", `data-t="${tab}" data-d="${y}"${scroll ? ` data-s="${scroll}"` : ""}`)}</div>`).join("");
+  if (nbM) h += `<p>${btn("✅ Hier, j'ai tout pris comme d'habitude (un clic)", "veilleall")}</p>`;
+  return fold(`🕘 Hier (${fr2(y)}) : ${manque ? manque + " chose(s) à vérifier" : "tout est noté ✅"}`, h, manque > 0);
 }
 
 // ---------- 📝 journal libre (config n°22 : { notes: [{ id, date, heure, tag, t }] }) ----------
@@ -146,10 +165,15 @@ function exFicheLignes() {
 // ---------- actions ----------
 const ACT_NEW = {
   goto(el) {
+    const d = el.dataset.d || null; // jour à remplir (ex : hier), sinon aujourd'hui
+    S.dashDate = d || today(); S.chkDate = d; S.syDate = d;
     DIRTY.clear(); S.tab = el.dataset.t; location.hash = S.tab; render(); window.scrollTo({ top: 0, behavior: "instant" });
+    if (d) ["cDate", "dfDate", "huDate"].forEach((id) => { const x = $(id); if (x) { x.value = d; markDirty({ target: x }); } });
+    if (d) toast("🗓️ Page réglée sur le " + fr(d));
     if (el.dataset.s) { const sm = [...document.querySelectorAll("#main summary")].find((x) => x.textContent.includes(el.dataset.s)); if (sm) { const d = sm.closest("details"); if (d) d.open = true; sm.scrollIntoView({ behavior: "instant", block: "start" }); } }
   },
   async todayall() { S.dashDate = today(); await ACT_DASH.toutpris(); },
+  async veilleall() { S.dashDate = addDays(today(), -1); await ACT_DASH.toutpris(); S.dashDate = today(); },
   // questions
   async qradd() {
     const q = val("qrQ").trim(); if (!q) return toast("Écris d'abord ta question.");
