@@ -38,8 +38,7 @@ function ovulationDuCycle(debut, fin) {
     prevOk = ok;
   }
   if (cl) cl.hauts = all.filter((x) => x.d >= cl.hausse && (!fin || x.d < fin) && x.t > cl.base).length;
-  if (cl) return { ...out, statut: "confirmée", hausse: cl.hausse, base: cl.base, hauts: cl.hauts, ovul: addDays(cl.hausse, -1), ovulFin: null };
-  // 2) sinon, méthode plus tolérante (une valeur isolée ignorée, une baisse tolérée)
+  // 2) méthode plus tolérante (une valeur isolée ignorée, une baisse tolérée) : voit les montées douces
   let prob = null;
   for (let i = 6; i < c.length; i++) {
     const prev = c.slice(i - 6, i).map((x) => x.t).sort((a, b) => b - a), base = prev[1];
@@ -53,10 +52,18 @@ function ovulationDuCycle(debut, fin) {
     if (ok) { prob = { ...res, statut: "confirmée" }; break; }
     if (hauts >= 2 && baisses === 0 && !prob) prob = { ...res, statut: "probable" };
   }
+  // 3) choix : la montée la plus tôt, sauf si la température est redescendue sous sa ligne avant l'autre montée
+  //    (c'était une fausse montée). Ovulation = la veille du 1er matin haut.
+  const res = (m, statut) => ({ ...out, statut, hausse: m.hausse, base: m.base, hauts: m.hauts, ovul: addDays(m.hausse, -1), ovulFin: null });
+  const tol = prob && prob.statut === "confirmée" ? prob : null;
+  if (cl && tol) {
+    const [tot, tard] = tol.hausse < cl.hausse ? [tol, cl] : [cl, tol];
+    const fausse = all.some((x) => x.d > tot.hausse && x.d < tard.hausse && x.t <= tot.base);
+    return res(fausse ? tard : tot, "confirmée");
+  }
+  if (cl) return res(cl, "confirmée");
   if (!prob) return out;
-  // l'ovulation a lieu en général entre le dernier matin bas et la veille du 1er matin haut
-  const veille = addDays(prob.hausse, -1);
-  return { ...out, statut: prob.statut, hausse: prob.hausse, base: prob.base, hauts: prob.hauts, ovul: prob.basDernier, ovulFin: veille > prob.basDernier ? veille : null };
+  return res(prob, prob.statut);
 }
 // ---------- jour du cycle en temps réel (bandeau en haut de chaque page) ----------
 function cycleBadgeHtml() {
