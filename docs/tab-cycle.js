@@ -26,44 +26,43 @@ function ovulationDuCycle(debut, fin) {
   //    le 3e au moins 0,2 °C au-dessus ; ovulation = la veille du 1er matin haut.
   //    On garde la 1re montée du cycle. Une montée plus tardive ne la remplace que si la température était
   //    redescendue entre les deux (fausse montée) : une 2e marche pendant la phase haute ne compte pas.
-  let cl = null, prevOk = false;
+  const cands = [];
+  let prevOk = false;
   for (let i = 6; i < all.length - 2; i++) {
     if (all[i].d < debut || (fin && all[i + 2].d >= fin)) { prevOk = false; continue; }
     const base = Math.max(...all.slice(i - 6, i).map((x) => x.t));
     const ok = all[i].t > base && all[i + 1].t > base && all[i + 2].t >= base + 0.2;
-    if (ok && !prevOk) {
-      const redescendue = cl && all.some((x) => x.d > cl.hausse && x.d < all[i].d && x.t <= cl.base);
-      if (!cl || redescendue) cl = { hausse: all[i].d, base };
-    }
+    if (ok && !prevOk) cands.push({ hausse: all[i].d, base });
     prevOk = ok;
   }
-  if (cl) cl.hauts = all.filter((x) => x.d >= cl.hausse && (!fin || x.d < fin) && x.t > cl.base).length;
   // 2) méthode plus tolérante (une valeur isolée ignorée, une baisse tolérée) : voit les montées douces
   let prob = null;
   for (let i = 6; i < c.length; i++) {
     const prev = c.slice(i - 6, i).map((x) => x.t).sort((a, b) => b - a), base = prev[1];
-    if (c[i].t <= base || c[i - 1].t > base) continue; // on cherche le 1er matin qui passe au-dessus
+    if (c[i].t <= base || c[i - 1].t > base) continue; // on cherche un matin qui passe au-dessus
     let hauts = 0, baisses = 0, ok = false;
     for (let j = i; j < c.length; j++) {
       if (c[j].t > base) { hauts++; if ((hauts >= 3 && c[j].t >= base + 0.2) || hauts >= 4) { ok = true; break; } }
       else if (++baisses > 1 || j === i) break;
     }
-    const res = { hausse: c[i].d, base, hauts, basDernier: c[i - 1].d };
-    if (ok) { prob = { ...res, statut: "confirmée" }; break; }
-    if (hauts >= 2 && baisses === 0 && !prob) prob = { ...res, statut: "probable" };
+    if (ok) cands.push({ hausse: c[i].d, base });
+    else if (hauts >= 2 && baisses === 0 && c.slice(i).every((x) => x.t > base)) prob = { hausse: c[i].d, base, hauts };
   }
-  // 3) choix : la montée la plus tôt, sauf si la température est redescendue sous sa ligne avant l'autre montée
-  //    (c'était une fausse montée). Ovulation = la veille du 1er matin haut.
+  // 3) une vraie ovulation = la température RESTE haute ensuite, jusqu'aux règles suivantes :
+  //    - au moins 70 % des matins après la montée au-dessus de la ligne (sinon c'était une fausse montée) ;
+  //    - cycle terminé : 7 à 18 jours entre la montée et les règles suivantes (durée normale de la phase haute).
+  //    On garde la 1re montée qui tient. Ovulation = la veille du 1er matin haut.
   const res = (m, statut) => ({ ...out, statut, hausse: m.hausse, base: m.base, hauts: m.hauts, ovul: addDays(m.hausse, -1), ovulFin: null });
-  const tol = prob && prob.statut === "confirmée" ? prob : null;
-  if (cl && tol) {
-    const [tot, tard] = tol.hausse < cl.hausse ? [tol, cl] : [cl, tol];
-    const fausse = all.some((x) => x.d > tot.hausse && x.d < tard.hausse && x.t <= tot.base);
-    return res(fausse ? tard : tot, "confirmée");
-  }
-  if (cl) return res(cl, "confirmée");
-  if (!prob) return out;
-  return res(prob, prob.statut);
+  const tient = (m) => {
+    const apres = c.filter((x) => x.d >= m.hausse);
+    m.hauts = apres.filter((x) => x.t > m.base).length; m.frac = apres.length ? m.hauts / apres.length : 0;
+    m.lut = fin ? diffDays(fin, m.hausse) : null;
+    return m.frac >= 0.7 && (m.lut === null || (m.lut >= 7 && m.lut <= 18));
+  };
+  const bons = cands.sort((a, b) => a.hausse.localeCompare(b.hausse)).filter(tient);
+  if (bons.length) return res(bons[0], "confirmée");
+  if (!fin && prob) return res(prob, "probable");
+  return out;
 }
 // ---------- jour du cycle en temps réel (bandeau en haut de chaque page) ----------
 function cycleBadgeHtml() {
@@ -246,7 +245,7 @@ function renderCycleEssai() {
   h += `<hr>`;
 
   if (cyc.length) {
-    h += `<h3>🌡️ Ma courbe de température</h3><div class="chart"><canvas id="chCycle"></canvas></div>${courbeDuJour()}<div id="chCmpWrap"></div>
+    h += `<h3>🌡️ Ma courbe de température</h3><div id="cycNav" style="display:flex;align-items:center;gap:.5rem"></div><div class="chart"><canvas id="chCycle"></canvas></div>${courbeDuJour()}<div id="chCmpWrap"></div>
     <h3>🔮 Analyse de ton Cycle &amp; Fertilité SOPK</h3>`;
     const o = ovulationEstimee();
     h += `<h4>🌡️ Ovulation estimée selon ta courbe</h4>`;
@@ -288,6 +287,30 @@ function renderCycleEssai() {
   return h;
 }
 
+// courbe : UN seul cycle à la fois (le cycle en cours par défaut), flèches pour voir les autres
+function dessineCourbe() {
+  const cyc = rows("cycle_temperature").map((r) => ({ d: r.Date, t: num(r["Température"]) })).filter((r) => r.t !== null && r.t > 34 && r.t < 39).sort((a, b) => a.d.localeCompare(b.d));
+  if (!$("chCycle") || !cyc.length) return;
+  const rg = regles(), nOf = (d) => rg.filter((x) => x <= d).length;
+  const nums = [...new Set(cyc.map((r) => nOf(r.d)))].sort((a, b) => a - b);
+  if (!nums.includes(S.cycVue)) S.cycVue = nums[nums.length - 1];
+  const n = S.cycVue, k = nums.indexOf(n), pts = cyc.filter((r) => nOf(r.d) === n);
+  const debut = n ? rg[n - 1] : pts[0].d, fin = rg[n] || null;
+  const oc = n ? ovulationsCycles().find((c) => c.debut === debut) : null, o = oc ? oc.o : { statut: null };
+  const ds = [{ label: "Température", data: pts.map((r) => ({ x: dayNum(r.d), y: r.t })), borderColor: "#7b5cc4", backgroundColor: "#7b5cc4", tension: 0, pointRadius: 4, borderWidth: 2.5 }];
+  const vl = n ? [{ x: dayNum(debut), label: "🩸" }] : [];
+  if (o.statut) {
+    vl.push({ x: dayNum(o.ovul), label: "🥚" });
+    if (o.base) ds.push({ label: "Ligne de base", data: [{ x: dayNum(debut), y: o.base }, { x: dayNum(pts[pts.length - 1].d), y: o.base }], borderColor: "#e377c2", backgroundColor: "#e377c2", borderDash: [6, 4], pointRadius: 0, borderWidth: 1.5 });
+  }
+  const ts = pts.map((r) => r.t), ymin = Math.floor((Math.min(...ts, o.base || 99) - 0.2) * 5) / 5, ymax = Math.ceil((Math.max(...ts, o.base || 0) + 0.2) * 5) / 5;
+  lineChart("chCycle", ds, { ymin, ymax, ytitle: "°C Basale", vlines: vl });
+  charts.chCycle.options.plugins.legend.display = false; charts.chCycle.update();
+  const titre = n ? `Cycle ${n}` : "Avant le 1er cycle noté", per = n ? ` (${fr2(debut)}${fin ? " → " + fr2(addDays(fin, -1)) : ", en cours"})` : "";
+  const ov = o.statut ? ` · 🥚 J${diffDays(o.ovul, debut) + 1}` : "";
+  if ($("cycNav")) $("cycNav").innerHTML = `${k > 0 ? btn("◀", "cycprev", "sec") : ""}<b style="flex:1;text-align:center">${titre}<span class="muted">${per}</span>${ov}</b>${k < nums.length - 1 ? btn("▶", "cycnext", "sec") : ""}`;
+  S.cycNums = nums;
+}
 function afterCycle() {
   const adv = () => {
     const v = val("tRes"); let t = "";
@@ -312,13 +335,7 @@ function afterCycle() {
   const label = (n) => (n === 0 ? "Avant le 1er cycle noté" : `Cycle ${n} (début ${fr2(rg[n - 1])})`);
   const groups = {};
   cyc.forEach((r) => { const n = nOf(r.d); (groups[n] = groups[n] || []).push(r); });
-  const ds = Object.entries(groups).map(([n, a], i) => ({ label: label(+n), data: a.map((r) => ({ x: dayNum(r.d), y: r.t })), borderColor: PALETTE[i % 8], backgroundColor: PALETTE[i % 8], tension: 0, pointRadius: 3 }));
-  const o = ovulationEstimee(), vl = rg.map((d) => ({ x: dayNum(d), label: "🩸" }));
-  if (o.statut) {
-    vl.push({ x: (dayNum(o.ovul) + dayNum(o.ovulFin || o.ovul)) / 2, label: "🥚" });
-    ds.push({ label: "Ligne de base (" + String(o.base.toFixed(2)).replace(".", ",") + " °C)", data: [{ x: dayNum(o.debut), y: o.base }, { x: dayNum(cyc[cyc.length - 1].d), y: o.base }], borderColor: "#e377c2", backgroundColor: "#e377c2", borderDash: [6, 4], pointRadius: 0, borderWidth: 1.5 });
-  }
-  lineChart("chCycle", ds, { ymin: 35, ymax: 37.5, ytitle: "°C Basale", vlines: vl });
+  dessineCourbe();
   const cmp = Object.entries(groups).filter(([n]) => +n >= 1);
   if (cmp.length >= 2) {
     $("chCmpWrap").innerHTML = `<details><summary>🔍 Comparer mes cycles (superposés : jour 1 = début des règles)</summary><div class="chart"><canvas id="chCmp"></canvas></div></details>`;
@@ -356,6 +373,8 @@ function renderRdv() {
 }
 
 const ACT_CYCLE = {
+  cycprev() { const a = S.cycNums || [], k = a.indexOf(S.cycVue); if (k > 0) { S.cycVue = a[k - 1]; dessineCourbe(); } },
+  cycnext() { const a = S.cycNums || [], k = a.indexOf(S.cycVue); if (k >= 0 && k < a.length - 1) { S.cycVue = a[k + 1]; dessineCourbe(); } },
   async savecycle() {
     const ok = await ins("cycle_temperature", { Date: val("cDate"), "Cycle Status": val("cStatus"), "Température": parseFloat(val("cTemp")), "Rapport Sexuel": ck("cRap") ? "Oui" : "Non", Note: val("cNote"), "Mode Parcours": "Essai Bébé" });
     if (ok) { toast("🎉 Sauvegardé !"); render(); }
