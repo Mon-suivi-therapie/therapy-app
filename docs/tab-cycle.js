@@ -23,15 +23,21 @@ function ovulationDuCycle(debut, fin) {
   const out = { n: c.length, debut, statut: null, hausse: null, ovul: null, ovulFin: null, base: null, hauts: 0 };
   if (c.length < 7) return out;
   // 1) règle classique (celle utilisée avant) : 3 matins de suite au-dessus du plus haut des 6 matins d'avant,
-  //    le 3e au moins 0,2 °C au-dessus ; on garde la dernière montée du cycle (le 1er jour de cette montée) ; ovulation = la veille
+  //    le 3e au moins 0,2 °C au-dessus ; ovulation = la veille du 1er matin haut.
+  //    On garde la 1re montée du cycle. Une montée plus tardive ne la remplace que si la température était
+  //    redescendue entre les deux (fausse montée) : une 2e marche pendant la phase haute ne compte pas.
   let cl = null, prevOk = false;
   for (let i = 6; i < all.length - 2; i++) {
     if (all[i].d < debut || (fin && all[i + 2].d >= fin)) { prevOk = false; continue; }
     const base = Math.max(...all.slice(i - 6, i).map((x) => x.t));
     const ok = all[i].t > base && all[i + 1].t > base && all[i + 2].t >= base + 0.2;
-    if (ok && !prevOk) cl = { hausse: all[i].d, base, hauts: all.slice(i).filter((x) => (!fin || x.d < fin) && x.t > base).length };
+    if (ok && !prevOk) {
+      const redescendue = cl && all.some((x) => x.d > cl.hausse && x.d < all[i].d && x.t <= cl.base);
+      if (!cl || redescendue) cl = { hausse: all[i].d, base };
+    }
     prevOk = ok;
   }
+  if (cl) cl.hauts = all.filter((x) => x.d >= cl.hausse && (!fin || x.d < fin) && x.t > cl.base).length;
   if (cl) return { ...out, statut: "confirmée", hausse: cl.hausse, base: cl.base, hauts: cl.hauts, ovul: addDays(cl.hausse, -1), ovulFin: null };
   // 2) sinon, méthode plus tolérante (une valeur isolée ignorée, une baisse tolérée)
   let prob = null;
@@ -142,7 +148,9 @@ function ovulationsBlock() {
     return lib + v + (c.pic ? ` <span class="muted">· test positif le ${fr2(c.pic)}</span>` : "");
   }).join("<br>");
   h += `<hr style="margin:.5rem 0">📊 <b>Moyenne : ovulation vers le J${moy !== null ? Math.round(moy) : "?"}</b>${vus.length ? ` <span class="muted">(sur ${vus.length} cycle(s) confirmé(s)${vus.length > 1 ? `, du J${Math.min(...vus.map((c) => c.jOv))} au J${Math.max(...vus.map((c) => c.jOv))}` : ""})</span>` : ' <span class="muted">(aucune ovulation confirmée pour l\'instant)</span>'}`;
-  if (durees.length) h += `<br>🔁 Durée moyenne d'un cycle : <b>${Math.round(avg(durees))} jours</b> <span class="muted">(sur ${durees.length} cycle(s) terminé(s))</span>`;
+  if (durees.length) h += `<br>🔁 Durée moyenne d'un cycle : <b>${Math.round(avg(durees))} jours</b> <span class="muted">(sur ${durees.length} cycle(s) terminé(s)${durees.length > 1 ? `, de ${Math.min(...durees)} à ${Math.max(...durees)} jours` : ""})</span>`;
+  const ecart = vus.length > 1 ? Math.max(...vus.map((c) => c.jOv)) - Math.min(...vus.map((c) => c.jOv)) : 0;
+  h += `<br>🌸 <b>Avec le SOPK, chaque cycle est différent</b> : la moyenne est un repère, pas une prévision.${ecart >= 4 ? ` Tes ovulations varient de ${ecart} jours d'un cycle à l'autre.` : ""} Pour savoir où tu en es <b>ce cycle-ci</b>, fie-toi à ta courbe de ce mois et à tes tests d'ovulation, pas à la moyenne.`;
   h += `</div><p class="muted">J1 = premier jour des règles. Le jour d'ovulation est le dernier matin bas avant la montée de température. Pour qu'un cycle soit compté, note bien chaque « 🩸 Début des Règles ».</p>`;
   const opts = L.map((c) => `Cycle ${c.n} (début le ${fr2(c.debut)})`), corr = ovCorr();
   h += fold("✏️ Corriger le jour d'ovulation d'un cycle", `<p class="muted">Si tu sais quand tu as ovulé (test positif, échographie, ou courbe que tu lis autrement), écris la date : elle remplace le calcul de l'appli et compte dans la moyenne.</p>
