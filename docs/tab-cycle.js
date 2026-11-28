@@ -12,9 +12,14 @@ const RESULTATS_TEST = [
 //   une seule baisse sous la ligne est tolérée dans la série
 // - probable : la montée a commencé (2 températures au-dessus) mais il faut encore 1 ou 2 matins
 function ovulationEstimee() {
+  const rg = regles().filter((d) => d <= today());
+  const first = rows("cycle_temperature").map((r) => r.Date).sort()[0];
+  return ovulationDuCycle(rg.length ? rg[rg.length - 1] : first || today(), null);
+}
+// même méthode pour n'importe quel cycle : de « debut » (règles) jusqu'à la veille de « fin » (règles suivantes, ou rien = en cours)
+function ovulationDuCycle(debut, fin) {
   const all = rows("cycle_temperature").map((r) => ({ d: r.Date, t: num(r["Température"]) })).filter((r) => r.t !== null && r.t > 34 && r.t < 39).sort((a, b) => a.d.localeCompare(b.d));
-  const rg = regles().filter((d) => d <= today()), debut = rg.length ? rg[rg.length - 1] : (all.length ? all[0].d : today());
-  const c = all.filter((r) => r.d >= debut);
+  const c = all.filter((r) => r.d >= debut && (!fin || r.d < fin));
   const out = { n: c.length, debut, statut: null, hausse: null, ovul: null, ovulFin: null, base: null, hauts: 0 };
   if (c.length < 7) return out;
   let prob = null;
@@ -32,8 +37,8 @@ function ovulationEstimee() {
   }
   if (!prob) return out;
   // l'ovulation a lieu en général entre le dernier matin bas et la veille du 1er matin haut
-  const fin = addDays(prob.hausse, -1);
-  return { ...out, statut: prob.statut, hausse: prob.hausse, base: prob.base, hauts: prob.hauts, ovul: prob.basDernier, ovulFin: fin > prob.basDernier ? fin : null };
+  const veille = addDays(prob.hausse, -1);
+  return { ...out, statut: prob.statut, hausse: prob.hausse, base: prob.base, hauts: prob.hauts, ovul: prob.basDernier, ovulFin: veille > prob.basDernier ? veille : null };
 }
 // ---------- jour du cycle en temps réel (bandeau en haut de chaque page) ----------
 function cycleBadgeHtml() {
@@ -92,6 +97,33 @@ function courbeDuJour() {
     else { titre = "🌱 En bas : avant l'ovulation"; detail = "La température reste dans tes valeurs habituelles."; }
   }
   return box(typ, `<span style="font-size:1.15rem"><b>${titre}</b></span><br>🌡️ Ce matin : <b>${deg(auj.t)}</b>${ev ? " (" + ev + ")" : ""}. ${detail}`);
+}
+// ---------- jour d'ovulation de chaque cycle + moyenne ----------
+function ovulationsCycles() {
+  const rg = regles().filter((d) => d <= today());
+  return rg.map((debut, i) => {
+    const fin = rg[i + 1] || null, o = ovulationDuCycle(debut, fin), j = (d) => diffDays(d, debut) + 1;
+    return { n: i + 1, debut, fin, duree: fin ? diffDays(fin, debut) : null, o, jOv: o.statut ? j(o.ovul) : null, jOvFin: o.statut && o.ovulFin ? j(o.ovulFin) : null };
+  });
+}
+function ovulationsBlock() {
+  const L = ovulationsCycles(); if (!L.length) return "";
+  const vus = L.filter((c) => c.o.statut === "confirmée"), moy = vus.length ? avg(vus.map((c) => c.jOv)) : null;
+  const durees = L.filter((c) => c.duree && c.duree >= 15 && c.duree <= 90).map((c) => c.duree);
+  const jTxt = (c) => "J" + c.jOv + (c.jOvFin ? "-" + c.jOvFin : "");
+  let h = `<h4>📋 Jour d'ovulation de chaque cycle</h4><div class="box info">` + L.map((c) => {
+    const lib = `<b>Cycle ${c.n}</b> <span class="muted">(${fr2(c.debut)}${c.fin ? " → " + fr2(addDays(c.fin, -1)) + ", " + c.duree + " j" : ", en cours"})</span> : `;
+    let v;
+    if (c.o.statut === "confirmée") v = `🥚 <b>${jTxt(c)}</b> (vers le ${fr2(c.o.ovul)})`;
+    else if (c.o.statut === "probable") v = `🌡️ ${jTxt(c)} peut-être (pas encore confirmée)`;
+    else if (c.o.n < 7) v = `<span class="muted">pas assez de températures (${c.o.n})</span>`;
+    else v = c.fin ? "❌ pas de montée vue sur la courbe (cycle peut-être sans ovulation)" : "⏳ pas encore de montée";
+    return lib + v;
+  }).join("<br>");
+  h += `<hr style="margin:.5rem 0">📊 <b>Moyenne : ovulation vers le J${moy !== null ? Math.round(moy) : "?"}</b>${vus.length ? ` <span class="muted">(sur ${vus.length} cycle(s) confirmé(s)${vus.length > 1 ? `, du J${Math.min(...vus.map((c) => c.jOv))} au J${Math.max(...vus.map((c) => c.jOv))}` : ""})</span>` : ' <span class="muted">(aucune ovulation confirmée pour l\'instant)</span>'}`;
+  if (durees.length) h += `<br>🔁 Durée moyenne d'un cycle : <b>${Math.round(avg(durees))} jours</b> <span class="muted">(sur ${durees.length} cycle(s) terminé(s))</span>`;
+  h += `</div><p class="muted">J1 = premier jour des règles. Le jour d'ovulation est le dernier matin bas avant la montée de température. Pour qu'un cycle soit compté, note bien chaque « 🩸 Début des Règles ».</p>`;
+  return h;
 }
 const ovulTxt = (o) => (o.ovulFin ? `entre le <b>${fr(o.ovul)}</b> et le <b>${fr(o.ovulFin)}</b>` : `vers le <b>${fr(o.ovul)}</b>`);
 
@@ -160,6 +192,7 @@ function renderCycleEssai() {
     } else if (o.statut === "probable") h += box("info", `🌡️ <b>Montée de température en cours</b> depuis le ${fr(o.hausse)} : l'ovulation a peut-être eu lieu ${ovulTxt(o)}. Il faut encore ${o.hauts >= 3 ? "1 matin" : "1 ou 2 matins"} au-dessus de ${String(o.base.toFixed(2)).replace(".", ",")} °C pour la confirmer.`);
     else if (o.n < 7) h += box("info", `Depuis tes dernières règles (${fr(o.debut)}), il faut au moins 7 températures pour voir une montée. Tu en as ${o.n}.`);
     else h += box("info", `Pas encore de montée nette depuis tes dernières règles (${fr(o.debut)}). Continue à prendre ta température chaque matin, au réveil, à la même heure. Avec un SOPK, l'ovulation peut arriver tard.`);
+    h += ovulationsBlock();
     h += `<p class="muted">Comment l'appli décide : elle compare chaque matin aux 6 matins d'avant (en ignorant une valeur isolée). L'ovulation est confirmée quand 3 matins de suite sont plus hauts, dont le 3e d'au moins 0,2 °C. Une mesure manquante ou une petite baisse isolée sont tolérées.</p>`;
 
     const tri = cyc.filter((r) => num(r["Température"]) !== null).sort((a, b) => a.Date.localeCompare(b.Date));
