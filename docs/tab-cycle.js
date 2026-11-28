@@ -99,11 +99,19 @@ function courbeDuJour() {
   return box(typ, `<span style="font-size:1.15rem"><b>${titre}</b></span><br>🌡️ Ce matin : <b>${deg(auj.t)}</b>${ev ? " (" + ev + ")" : ""}. ${detail}`);
 }
 // ---------- jour d'ovulation de chaque cycle + moyenne ----------
+// corrections à la main (config n°28 : { ov: { "début du cycle": "date d'ovulation" } })
+const ovCorr = () => cfg(28).ov || {};
 function ovulationsCycles() {
-  const rg = regles().filter((d) => d <= today());
+  const rg = regles().filter((d) => d <= today()), corr = ovCorr();
+  const pics = rows("tests_ovulation").filter((r) => String(r["Résultat"] || "").startsWith("🥚 Pic")).map((r) => r.Date)
+    .concat(rows("cycle_temperature").filter((r) => r["Cycle Status"] === "🥚 Test d'Ovulation Positif").map((r) => r.Date)).sort();
   return rg.map((debut, i) => {
-    const fin = rg[i + 1] || null, o = ovulationDuCycle(debut, fin), j = (d) => diffDays(d, debut) + 1;
-    return { n: i + 1, debut, fin, duree: fin ? diffDays(fin, debut) : null, o, jOv: o.statut ? j(o.ovul) : null, jOvFin: o.statut && o.ovulFin ? j(o.ovulFin) : null };
+    const fin = rg[i + 1] || null, j = (d) => diffDays(d, debut) + 1;
+    let o = ovulationDuCycle(debut, fin);
+    const m = corr[debut];
+    if (m) o = { ...o, statut: "confirmée", ovul: m, ovulFin: null, manuel: true };
+    const pic = pics.find((d) => d >= debut && (!fin || d < fin));
+    return { n: i + 1, debut, fin, duree: fin ? diffDays(fin, debut) : null, o, pic, jOv: o.statut ? j(o.ovul) : null, jOvFin: o.statut && o.ovulFin ? j(o.ovulFin) : null };
   });
 }
 function ovulationsBlock() {
@@ -114,15 +122,20 @@ function ovulationsBlock() {
   let h = `<h4>📋 Jour d'ovulation de chaque cycle</h4><div class="box info">` + L.map((c) => {
     const lib = `<b>Cycle ${c.n}</b> <span class="muted">(${fr2(c.debut)}${c.fin ? " → " + fr2(addDays(c.fin, -1)) + ", " + c.duree + " j" : ", en cours"})</span> : `;
     let v;
-    if (c.o.statut === "confirmée") v = `🥚 <b>${jTxt(c)}</b> (vers le ${fr2(c.o.ovul)})`;
+    if (c.o.manuel) v = `🥚 <b>${jTxt(c)}</b> (le ${fr2(c.o.ovul)}, ✏️ corrigé par toi)`;
+    else if (c.o.statut === "confirmée") v = `🥚 <b>${jTxt(c)}</b> (vers le ${fr2(c.o.ovul)})`;
     else if (c.o.statut === "probable") v = `🌡️ ${jTxt(c)} peut-être (pas encore confirmée)`;
     else if (c.o.n < 7) v = `<span class="muted">pas assez de températures (${c.o.n})</span>`;
     else v = c.fin ? "❌ pas de montée vue sur la courbe (cycle peut-être sans ovulation)" : "⏳ pas encore de montée";
-    return lib + v;
+    return lib + v + (c.pic ? ` <span class="muted">· test positif le ${fr2(c.pic)}</span>` : "");
   }).join("<br>");
   h += `<hr style="margin:.5rem 0">📊 <b>Moyenne : ovulation vers le J${moy !== null ? Math.round(moy) : "?"}</b>${vus.length ? ` <span class="muted">(sur ${vus.length} cycle(s) confirmé(s)${vus.length > 1 ? `, du J${Math.min(...vus.map((c) => c.jOv))} au J${Math.max(...vus.map((c) => c.jOv))}` : ""})</span>` : ' <span class="muted">(aucune ovulation confirmée pour l\'instant)</span>'}`;
   if (durees.length) h += `<br>🔁 Durée moyenne d'un cycle : <b>${Math.round(avg(durees))} jours</b> <span class="muted">(sur ${durees.length} cycle(s) terminé(s))</span>`;
   h += `</div><p class="muted">J1 = premier jour des règles. Le jour d'ovulation est le dernier matin bas avant la montée de température. Pour qu'un cycle soit compté, note bien chaque « 🩸 Début des Règles ».</p>`;
+  const opts = L.map((c) => `Cycle ${c.n} (début le ${fr2(c.debut)})`), corr = ovCorr();
+  h += fold("✏️ Corriger le jour d'ovulation d'un cycle", `<p class="muted">Si tu sais quand tu as ovulé (test positif, échographie, ou courbe que tu lis autrement), écris la date : elle remplace le calcul de l'appli et compte dans la moyenne.</p>
+  <div class="row">${sel("ovcCycle", "Quel cycle ?", opts, opts[0])}${dateField("ovcDate", "🥚 Date d'ovulation", L[0].o.ovul || L[0].debut, today())}</div>
+  ${btn("💾 Enregistrer la correction", "ovcsave")}${Object.keys(corr).length ? btn("↩️ Remettre le calcul de l'appli pour ce cycle", "ovcdel", "sec") : ""}`, false);
   return h;
 }
 const ovulTxt = (o) => (o.ovulFin ? `entre le <b>${fr(o.ovul)}</b> et le <b>${fr(o.ovulFin)}</b>` : `vers le <b>${fr(o.ovul)}</b>`);
@@ -291,6 +304,18 @@ const ACT_CYCLE = {
   async savecycle() {
     const ok = await ins("cycle_temperature", { Date: val("cDate"), "Cycle Status": val("cStatus"), "Température": parseFloat(val("cTemp")), "Rapport Sexuel": ck("cRap") ? "Oui" : "Non", Note: val("cNote"), "Mode Parcours": "Essai Bébé" });
     if (ok) { toast("🎉 Sauvegardé !"); render(); }
+  },
+  async ovcsave() {
+    const L = ovulationsCycles(), c = L[Math.max(0, $("ovcCycle").selectedIndex)], d = dval("ovcDate");
+    if (!c || !d) return toast("Choisis le cycle et la date.");
+    if (d < c.debut || (c.fin && d >= c.fin) || d > today()) return toast(`La date doit être dans le cycle ${c.n} (à partir du ${fr2(c.debut)}${c.fin ? " jusqu'au " + fr2(addDays(c.fin, -1)) : ""}).`);
+    if (await saveCfg(28, { ov: { ...ovCorr(), [c.debut]: d } })) { toast(`🥚 Cycle ${c.n} : ovulation le ${fr2(d)}`); render(); }
+  },
+  async ovcdel() {
+    const L = ovulationsCycles(), c = L[Math.max(0, $("ovcCycle").selectedIndex)], ov = { ...ovCorr() };
+    if (!c || !ov[c.debut]) return toast("Ce cycle n'a pas de correction.");
+    delete ov[c.debut];
+    if (await saveCfg(28, { ov })) { toast("↩️ Calcul de l'appli remis"); render(); }
   },
   async savetest() {
     const an = S.photo?.an;
