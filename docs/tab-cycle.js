@@ -22,6 +22,18 @@ function ovulationDuCycle(debut, fin) {
   const c = all.filter((r) => r.d >= debut && (!fin || r.d < fin));
   const out = { n: c.length, debut, statut: null, hausse: null, ovul: null, ovulFin: null, base: null, hauts: 0 };
   if (c.length < 7) return out;
+  // 1) règle classique (celle utilisée avant) : 3 matins de suite au-dessus du plus haut des 6 matins d'avant,
+  //    le 3e au moins 0,2 °C au-dessus ; on garde la dernière montée du cycle (le 1er jour de cette montée) ; ovulation = la veille
+  let cl = null, prevOk = false;
+  for (let i = 6; i < all.length - 2; i++) {
+    if (all[i].d < debut || (fin && all[i + 2].d >= fin)) { prevOk = false; continue; }
+    const base = Math.max(...all.slice(i - 6, i).map((x) => x.t));
+    const ok = all[i].t > base && all[i + 1].t > base && all[i + 2].t >= base + 0.2;
+    if (ok && !prevOk) cl = { hausse: all[i].d, base, hauts: all.slice(i).filter((x) => (!fin || x.d < fin) && x.t > base).length };
+    prevOk = ok;
+  }
+  if (cl) return { ...out, statut: "confirmée", hausse: cl.hausse, base: cl.base, hauts: cl.hauts, ovul: addDays(cl.hausse, -1), ovulFin: null };
+  // 2) sinon, méthode plus tolérante (une valeur isolée ignorée, une baisse tolérée)
   let prob = null;
   for (let i = 6; i < c.length; i++) {
     const prev = c.slice(i - 6, i).map((x) => x.t).sort((a, b) => b - a), base = prev[1];
