@@ -165,6 +165,31 @@ function ovulationsBlock() {
   ${btn("💾 Enregistrer la correction", "ovcsave")}${Object.keys(corr).length ? btn("↩️ Remettre le calcul de l'appli pour ce cycle", "ovcdel", "sec") : ""}`, false);
   return h;
 }
+// ---------- saisie rapide des anciens jours (une ligne par jour) ----------
+function impLire(txt) {
+  const t = today(), ok = [], err = [], deja = new Set(rows("cycle_temperature").map((r) => r.Date)), vus = new Set();
+  String(txt || "").split(/\r?\n/).forEach((ligne) => {
+    const l = ligne.trim(); if (!l) return;
+    let d = null, m;
+    if ((m = l.match(/(\d{4})-(\d{1,2})-(\d{1,2})/))) d = parseFr(`${m[3]}/${m[2]}/${m[1]}`);
+    else if ((m = l.match(/(\d{1,2})[\/.\-](\d{1,2})(?:[\/.\-](\d{2,4}))?/))) {
+      let y = m[3] ? +m[3] : +t.slice(0, 4); if (y < 100) y += 2000;
+      d = parseFr(`${m[1]}/${m[2]}/${y}`);
+      if (d && !m[3] && d > t) d = parseFr(`${m[1]}/${m[2]}/${y - 1}`); // sans année : l'année d'avant si la date est dans le futur
+    }
+    if (!d) return err.push(l + " (date pas comprise)");
+    if (d > t) return err.push(l + " (date dans le futur)");
+    const reste = m ? l.replace(m[0], " ") : l, tm = reste.match(/(3[4-9])[.,](\d{1,2})/), temp = tm ? parseFloat(tm[1] + "." + tm[2]) : null;
+    const low = reste.toLowerCase();
+    const statut = /fin/.test(low) ? "❌ Fin des Règles" : /r[eè]gle|🩸/.test(low) ? "🩸 Début des Règles" : /spot/.test(low) ? "💧 Spotting (Pertes)" : /test|pic|lh/.test(low) ? "🥚 Test d'Ovulation Positif" : "Aucun Status";
+    if (temp === null && statut === "Aucun Status") return err.push(l + " (pas de température)");
+    if (deja.has(d) || vus.has(d)) return err.push(`${fr2(d)} déjà enregistré, ignoré`);
+    vus.add(d);
+    ok.push({ Date: d, "Cycle Status": statut, "Température": temp, "Rapport Sexuel": /rapport|💞/.test(low) ? "Oui" : "Non", Note: "Ajouté en saisie rapide", "Mode Parcours": "Essai Bébé" });
+  });
+  ok.sort((a, b) => a.Date.localeCompare(b.Date));
+  return { ok, err };
+}
 const ovulTxt = (o) => (o.ovulFin ? `entre le <b>${fr(o.ovul)}</b> et le <b>${fr(o.ovulFin)}</b>` : `vers le <b>${fr(o.ovul)}</b>`);
 
 function renderCycleEssai() {
@@ -175,7 +200,10 @@ function renderCycleEssai() {
   ${field("cTemp", "Température basale (°C)", "number", "36.5", 'step="0.05" min="35" max="41"')}</div>
   ${chk("cRap", "💞 Rapport sexuel ce jour-là")}
   ${field("cNote", "Notes particulières")}
-  ${btn("📊 Enregistrer cette journée", "savecycle")}<hr>
+  ${btn("📊 Enregistrer cette journée", "savecycle")}
+  ${fold("📥 Ajouter mes anciens cycles d'un coup", `<p class="muted">Colle ou écris une ligne par jour : <b>la date</b>, puis <b>la température</b>. Ajoute le mot <b>règles</b> le 1er jour des règles, <b>fin</b> le dernier jour, <b>rapport</b> si tu as eu un rapport. L'année est facultative.<br>Exemple :<br><code>21/09 36,10 règles</code><br><code>22/09 36,05</code><br><code>25/09 36,12 fin</code><br><code>17/10 36,40 rapport</code><br>Les jours déjà enregistrés ne sont pas ajoutés une 2e fois.</p>
+  <div class="fg"><label class="f" for="impTxt">Mes anciens jours</label><textarea id="impTxt" rows="8" placeholder="21/09 36,10 règles&#10;22/09 36,05&#10;23/09 36,08"></textarea></div>
+  ${btn("👀 Vérifier avant d'ajouter", "impvoir", "sec")}<div id="impOut"></div>`, false)}<hr>
   <h3>🥚 Mes tests d'ovulation</h3>`;
 
   const rg = regles();
@@ -331,6 +359,19 @@ const ACT_CYCLE = {
   async savecycle() {
     const ok = await ins("cycle_temperature", { Date: val("cDate"), "Cycle Status": val("cStatus"), "Température": parseFloat(val("cTemp")), "Rapport Sexuel": ck("cRap") ? "Oui" : "Non", Note: val("cNote"), "Mode Parcours": "Essai Bébé" });
     if (ok) { toast("🎉 Sauvegardé !"); render(); }
+  },
+  impvoir() {
+    const { ok, err } = impLire(val("impTxt"));
+    let h = ok.length ? box("ok", `✅ <b>${ok.length} jour(s)</b> prêts à ajouter, du ${fr2(ok[0].Date)} au ${fr2(ok[ok.length - 1].Date)}.`) + `<div class="tw"><table><thead><tr><th>Date</th><th>Température</th><th>Statut</th><th>Rapport</th></tr></thead><tbody>${ok.map((r) => `<tr><td>${fr(r.Date)}</td><td>${r["Température"] !== null ? String(r["Température"].toFixed(2)).replace(".", ",") + " °C" : "—"}</td><td>${esc(r["Cycle Status"])}</td><td>${r["Rapport Sexuel"] === "Oui" ? "💞" : ""}</td></tr>`).join("")}</tbody></table></div>${btn(`📥 Ajouter ces ${ok.length} jour(s)`, "impgo")}` : box("info", "Aucune ligne à ajouter pour l'instant.");
+    if (err.length) h += box("warn", "⚠️ Lignes non ajoutées :<br>" + err.map(esc).join("<br>"));
+    $("impOut").innerHTML = h;
+  },
+  async impgo() {
+    const { ok } = impLire(val("impTxt")); if (!ok.length) return toast("Rien à ajouter.");
+    const { error } = await sb.from("cycle_temperature").insert(ok);
+    if (error) return toast("Erreur : " + error.message);
+    await loadTables(["cycle_temperature"]);
+    DIRTY.delete("#impTxt"); toast(`🎉 ${ok.length} jour(s) ajoutés`); render();
   },
   async ovcsave() {
     const L = ovulationsCycles(), c = L[Math.max(0, $("ovcCycle").selectedIndex)], d = dval("ovcDate");
